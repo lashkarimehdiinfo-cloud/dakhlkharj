@@ -209,8 +209,15 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const fa=n=>Number(n||0).toLocaleString("fa-IR");
-const RIAL=()=>S&&S.unit==="rial";const U=()=>RIAL()?"ریال":"تومان";const F=()=>RIAL()?10:1;
-const toman=n=>(n<0?"منفی ":"")+fa(Math.abs(Math.round(n*F())))+" "+U();
+const CURS=[["toman","تومان"],["rial","ریال"],["usd","دلار"],["eur","یورو"],["gbp","پوند"],["cny","یوان"]];
+let UNIT="";try{UNIT=localStorage.getItem("home-unit")||""}catch(e){}
+let RATES={};try{RATES=JSON.parse(localStorage.getItem("home-rates")||"{}")}catch(e){}
+const curU=()=>{const u=UNIT||(S&&S.unit)||"toman";return (u==="toman"||u==="rial"||RATES[u]>0)?u:"toman"};
+const RIAL=()=>curU()==="rial";const FX=()=>!["toman","rial"].includes(curU());
+const U=()=>(CURS.find(c=>c[0]===curU())||CURS[0])[1];
+const F=()=>{const u=curU();return u==="rial"?10:u==="toman"?1:1/RATES[u]};
+function setUnit(u){UNIT=u;try{localStorage.setItem("home-unit",u)}catch(e){}}
+const toman=n=>{const v=Math.abs(n*F());return (n<0?"منفی ":"")+(FX()?(+v.toFixed(2)).toLocaleString("fa-IR",{maximumFractionDigits:2}):fa(Math.round(v)))+" "+U()};
 const enDigits=s=>String(s??"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
 const num=s=>Number(enDigits(s).replace(/[^\d.]/g,""))||0;
 const norm=s=>String(s||"").replace(/ي/g,"ی").replace(/ك/g,"ک").replace(/[\s‌‌-]/g,"").toLowerCase();
@@ -325,14 +332,14 @@ function toast(m){const t=document.createElement("div");t.className="toast";t.te
 function go(r,s=null){route=r;sub=s;render();scrollTo(0,0)}
 function sheet(html,bind){const bg=document.createElement("div");bg.className="sheet-bg";bg.innerHTML=`<div class="sheet" role="dialog">${html}</div>`;
   bg.addEventListener("click",e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);bind&&bind(bg.querySelector(".sheet"),()=>bg.remove());return bg}
-function moneyInput(el){el.addEventListener("input",()=>{const v=num(el.value);el.value=v?v.toLocaleString("en"):""})}
+function moneyInput(el){el.addEventListener("input",()=>{if(FX()){el.value=enDigits(el.value).replace(/[^\d.]/g,"");return}const v=num(el.value);el.value=v?v.toLocaleString("en"):""})}
 function form(title,fields,onSave,extra=""){
   const html=`<h2 style="margin-top:0">${esc(title)}</h2><form class="stack" id="f">${fields.map(f=>{
     const v=f.value??"";
     if(f.type==="seg")return `<div class="seg" data-k="${f.k}">${f.options.map(o=>`<button type="button" data-v="${esc(o[0])}" class="${o[0]===v?"on":""}">${esc(o[1])}</button>`).join("")}</div>`;
     if(f.type==="select")return `<div class="field"><label for="f_${f.k}">${f.label}</label><select id="f_${f.k}" name="${f.k}">${f.options.map(o=>{const[val,lab]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${val===v?"selected":""}>${esc(lab)}</option>`}).join("")}</select></div>`;
     const im=f.type==="money"||f.type==="int"?'inputmode="numeric"':f.type==="jdate"?'inputmode="numeric" placeholder="۱۴۰۵/۰۸/۱۷"':"";
-    const val=f.type==="money"&&v?Math.round(Number(v)*F()).toLocaleString("en"):v;
+    const val=f.type==="money"&&v?(FX()?String(+(Number(v)*F()).toFixed(2)):Math.round(Number(v)*F()).toLocaleString("en")):v;
     return `<div class="field"><label for="f_${f.k}">${f.label}${f.type==="jdate"?' <span class="muted">(سال/ماه/روز)</span>':""}</label><input type="text" id="f_${f.k}" name="${f.k}" ${im} value="${esc(val)}" ${f.ph?`placeholder="${esc(f.ph)}"`:""} autocomplete="off"></div>`}).join("")}
     ${extra}<div class="row"><button class="btn grow" type="submit">ذخیره</button><button class="btn ghost" type="button" id="cx">انصراف</button></div></form>`;
   sheet(html,(sh,close)=>{
@@ -427,7 +434,7 @@ const ICONS={
  kitchen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 10h14M8 6v2M8 13v3"/></svg>',
  more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'};
 const TABS=[["home","خانه"],["money","دخل و خرج"],["shop","خرید"],["kitchen","آشپزخانه"],["more","بیشتر"]];
-function renderTabs(){const cur=["inst","todo","save","report","accounts","settings","cards"].includes(route)?"more":route;
+function renderTabs(){const cur=["inst","todo","save","report","accounts","settings","cards","family"].includes(route)?"more":route;
   $("#tabs").innerHTML=TABS.map(([k,l])=>`<button class="navb ${cur===k?"on":""}" data-go="${k}" aria-label="${l}">${ICONS[k]}<span>${l}</span></button>`).join("")}
 
 const CAT_E={"سوپرمارکت":"🛒","میوه و سبزی":"🥦","گوشت و مرغ":"🍗","نان":"🍞","رستوران و بیرون‌بر":"🍕","قبض‌ها":"💡","اجاره":"🏠","بنزین و رفت‌وآمد":"⛽","درمان":"💊","پوشاک":"👗","تفریح":"🎡","اقساط":"📆","پس‌انداز":"🐷","سایر":"📦","حقوق":"💼","پاداش":"🎁","فروش":"🏷️","سایر درآمد":"💰"};
@@ -624,7 +631,10 @@ function vSettings(){
   <div class="card stack"><div class="field"><label for="setName">اسمت (برای سلام اول صفحه)</label><input type="text" id="setName" value="${esc(S.name)}"></div><button class="btn small" data-act="setName" style="align-self:flex-start">ذخیره</button></div>
   <div class="card stack"><b>🔐 امنیت</b><span class="muted">نام کاربری: ${esc(S.auth?.user||"")} · ${getRem()?"ورود سریع با پین روی این گوشی فعال است":"ورود با رمز"}</span>
   <div class="row" style="flex-wrap:wrap"><button class="btn small ghost" data-act="chpass">تغییر رمز</button><button class="btn small ghost" data-act="setpin">${getRem()?"تغییر پین":"ساختن پین"}</button>${getRem()?`<button class="btn small ghost" data-act="delpin">حذف پین</button>`:""}<button class="btn small ghost" data-act="lock">🔒 قفل کن</button></div></div>
-  <div class="card stack"><b>واحد پول</b><div class="seg"><button class="${RIAL()?"":"on"}" data-unit="toman">تومان</button><button class="${RIAL()?"on":""}" data-unit="rial">ریال</button></div><span class="muted">همه مبلغ‌ها و ورود عدد با همین واحد است. با دکمه بالای صفحه هم عوض می‌شود.</span></div>
+  <div class="card stack"><b>💱 واحد پول این گوشی</b><div class="chips">${CURS.map(c=>`<button class="chip ${curU()===c[0]?"on":""}" data-unit="${c[0]}">${c[1]}</button>`).join("")}</div>
+  <span class="muted">هر گوشی واحد خودش را دارد؛ مثلاً تو ریال ببینی و همسرت تومان. هر کس هر عددی وارد کند، برای دیگری با واحد خودش نشان داده می‌شود.</span>
+  <b style="margin-top:6px">نرخ ارز (به تومان)</b>${CURS.slice(2).map(c=>`<div class="row"><span style="width:56px">${c[1]}</span><input type="text" inputmode="decimal" dir="ltr" class="grow" id="rate_${c[0]}" value="${RATES[c[0]]?RATES[c[0]]:""}" placeholder="قیمت ۱ ${c[1]} به تومان"></div>`).join("")}
+  <button class="btn small" data-act="saveRates" style="align-self:flex-start">ذخیره نرخ‌ها</button><span class="muted">مبلغ‌ها همیشه به تومان ذخیره می‌شوند و با این نرخ به ارز تبدیل می‌شوند؛ نرخ را هر وقت عوض شد به‌روز کن.</span></div>
   <div class="card stack"><b>اعلان روی گوشی</b><span class="muted">${perm==="granted"?"اعلان فعال است؛ هر بار که اپ را باز می‌کنی خلاصه یادآوری‌ها می‌آید.":perm==="denied"||perm==="unsupported"?"این نمایشگر اجازه اعلان سیستمی نمی‌دهد؛ یادآوری‌ها در صفحه خانه نشان داده می‌شوند.":"اجازه بده تا سلام و یادآوری‌ها به‌صورت اعلان بیاید."}</span>${perm==="default"?`<button class="btn small" data-act="notif" style="align-self:flex-start">فعال کردن اعلان</button>`:""}</div>
   <div class="card stack"><b>پشتیبان</b><span class="muted">اطلاعات روی حساب Claude تو ذخیره می‌شود و روی هر گوشی که با همین حساب باز کنی می‌آید.</span>
   <div class="row"><button class="btn small ghost" data-act="export">کپی پشتیبان</button><button class="btn small ghost" data-act="import">بازگردانی از متن</button></div></div>
@@ -803,7 +813,7 @@ document.addEventListener("click",async e=>{
   const t=e.target.closest("[data-go],[data-act],[data-edit],[data-shopt],[data-todot],[data-kt],[data-loc],[data-finish],[data-miss],[data-plan-pick],[data-slot],[data-pay],[data-dep],[data-wd],[data-rep],[data-txf],[data-unit],[data-ht],[data-hc]");if(!t)return;
   const d=t.dataset;
   if(d.go){go(d.go);return}
-  if(d.unit){S.unit=d.unit;save();render();return}
+  if(d.unit){if(!["toman","rial"].includes(d.unit)&&!(RATES[d.unit]>0)){toast("اول نرخ "+CURS.find(c=>c[0]===d.unit)[1]+" را پایین همین کارت وارد کن");$("#rate_"+d.unit)?.focus();return}setUnit(d.unit);render();toast("واحد: "+U());return}
   if(d.txf){txFilter=d.txf;render();return}
   if(d.ht){hType=d.ht;hCat="all";render();return}
   if(d.hc){hCat=d.hc;render();return}
@@ -830,6 +840,7 @@ document.addEventListener("click",async e=>{
   else if(a==="addsave")saveForm();
   else if(a==="addacc")accForm();
   else if(a==="addcard")cardForm();
+  else if(a==="saveRates"){CURS.slice(2).forEach(c=>{const v=num($("#rate_"+c[0]).value);if(v>0)RATES[c[0]]=v;else delete RATES[c[0]]});try{localStorage.setItem("home-rates",JSON.stringify(RATES))}catch(e){}render();toast("نرخ‌ها ذخیره شد ✓")}
   else if(a==="addcardphoto")cardForm({},true);
   else if(a==="lock")lockNow();
   else if(a==="chpass")changePass();
@@ -857,7 +868,7 @@ document.addEventListener("click",async e=>{
 $("#quickAdd").onclick=()=>txForm();
 document.addEventListener("change",e=>{if(e.target.id==="hm"){hM=+e.target.value;render()}else if(e.target.id==="ha"){txFilter=e.target.value;render()}});
 let hqT;document.addEventListener("input",e=>{if(e.target.id!=="hq")return;hQ=e.target.value;clearTimeout(hqT);hqT=setTimeout(()=>{render();const i=$("#hq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},350)});
-$("#unitBtn").onclick=()=>{S.unit=RIAL()?"toman":"rial";save();render();toast("واحد: "+U())};
+$("#unitBtn").onclick=()=>{const av=CURS.filter(c=>["toman","rial"].includes(c[0])||RATES[c[0]]>0);const i=av.findIndex(c=>c[0]===curU());setUnit(av[(i+1)%av.length][0]);render();toast("واحد: "+U()+(av.length<3?" — دلار، یورو، پوند و یوان را از تنظیمات فعال کن":""))};
 
 let aiCtl=null;
 async function runAI(sel,btn,prompt){const out=$(sel);if(!SAMPLE||!out)return;btn.disabled=true;out.classList.remove("muted");out.textContent="در حال فکر کردن…";
@@ -906,7 +917,7 @@ function stamp(){
   if((S.unit||"toman")!==PREV.__unit)S._m.unitU=now;
   snap();
 }
-function shared(st){const o={_m:st._m||{tomb:{}},plan:st.plan||{},unit:st.unit||"toman"};SYNC_ARR.forEach(k=>o[k]=st[k]||[]);return o}
+function shared(st){const o={_m:st._m||{tomb:{}},plan:st.plan||{},unit:st.unit||"toman",loc:st.loc||{}};SYNC_ARR.forEach(k=>o[k]=st[k]||[]);return o}
 function merge(L,R){
   const lm=L._m||{tomb:{}},rm=R._m||{tomb:{}};const tomb={...lm.tomb};
   Object.entries(rm.tomb||{}).forEach(([id,t])=>{if(!(tomb[id]>=t))tomb[id]=t});
@@ -918,6 +929,7 @@ function merge(L,R){
     out[k]=res});
   const lp=lm.planU||0,rp=rm.planU||0,lu=lm.unitU||0,ru=rm.unitU||0;
   out.plan=rp>lp?R.plan||{}:L.plan||{};out.unit=ru>lu?R.unit:L.unit;
+  out.loc={...(L.loc||{})};Object.entries(R.loc||{}).forEach(([k,v])=>{if(!out.loc[k]||(v.t||0)>(out.loc[k].t||0))out.loc[k]=v});
   out._m={tomb,planU:Math.max(lp,rp),unitU:Math.max(lu,ru)};return out;
 }
 async function sb(path,body,method){
@@ -930,7 +942,7 @@ async function sb(path,body,method){
 async function auth(){if(SY.access&&SY.exp>Date.now()+60000)return;if(!SY.refresh)throw new Error("login");
   const j=await sb("/auth/v1/token?grant_type=refresh_token",{refresh_token:SY.refresh});setSess(j)}
 function setSess(j){SY.access=j.access_token;SY.refresh=j.refresh_token;SY.exp=Date.now()+(j.expires_in||3600)*1000;if(j.user)SY.email=j.user.email;sySave()}
-function applyShared(o){const keep={auth:S.auth,name:S.name};SYNC_ARR.forEach(k=>S[k]=o[k]);S.plan=o.plan;S.unit=o.unit||S.unit;S._m=o._m;S.auth=keep.auth;S.name=keep.name;delete S.example;
+function applyShared(o){const keep={auth:S.auth,name:S.name};SYNC_ARR.forEach(k=>S[k]=o[k]);S.plan=o.plan;S.unit=o.unit||S.unit;S.loc=o.loc||{};S._m=o._m;S.auth=keep.auth;S.name=keep.name;delete S.example;
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}snap()}
 function safeRender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.closest("#view")||document.querySelector(".sheet-bg")||!UNLOCKED){syRender=true;return}render()}
 async function pull(){
@@ -999,6 +1011,41 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-sync
     er(/Invalid login|invalid_credentials/i.test(m)?"ایمیل یا رمز اشتباه است":/already registered|already exists/i.test(m)?"این ایمیل قبلاً ثبت شده؛ «ورود» را بزن":/not_found/.test(m)?"کد خانواده پیدا نشد":/api key|apikey/i.test(m)?"کلید سرور اشتباه است؛ «تغییر سرور» را بزن و کلید را دوباره بچسبان":/fetch|network|Failed/i.test(m)?"به سرور وصل نشد؛ فیلترشکن را روشن کن":m);
     if(!$("#sy_err"))toast("خطا: "+m)}
 });
+
+/* ---------- family location ---------- */
+let LOCON=false;try{LOCON=localStorage.getItem("home-locshare")==="1"}catch(e){}
+let locErr="";
+function km(a,b){const R=6371,t=x=>x*Math.PI/180;const dLa=t(b.lat-a.lat),dLo=t(b.lng-a.lng);const h=Math.sin(dLa/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function locTick(){
+  if(!LOCON||!SY.home||!SY.email||document.visibilityState!=="visible"||!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(p=>{locErr="";S.loc=S.loc||{};S.loc[SY.email]={n:S.name||SY.email,lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy||0),t:Date.now()};
+      try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}push();if(route==="family")safeRender()},
+    e=>{locErr=e.code===1?"اجازه موقعیت داده نشده؛ از تنظیمات گوشی ← برنامه‌ها ← دخل و خرج خانه ← مجوزها ← مکان را روشن کن":"موقعیت پیدا نشد؛ GPS گوشی را روشن کن";if(route==="family")safeRender()},
+    {enableHighAccuracy:true,timeout:20000,maximumAge:30000});
+}
+setInterval(locTick,60000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")locTick()});setTimeout(locTick,3000);
+const ago=t=>{const m=Math.round((Date.now()-t)/60000);return m<1?"همین الان":m<60?fa(m)+" دقیقه پیش":m<1440?fa(Math.round(m/60))+" ساعت پیش":fa(Math.round(m/1440))+" روز پیش"};
+function vFamily(){
+  const back=`<button class="btn small ghost back" data-go="more">→ بازگشت</button>`;
+  if(!SY.home)return back+`<h2><span class="e">📍</span>موقعیت خانواده</h2><div class="card">${empty("👨‍👩‍👧","اول از تنظیمات، گوشی‌ها را به یک خانواده وصل کن.")}<button class="btn" data-go="settings" style="width:100%">رفتن به تنظیمات</button></div>`;
+  const L=Object.entries(S.loc||{}).sort((a,b)=>(b[1].t||0)-(a[1].t||0));const me=(S.loc||{})[SY.email];
+  return back+`<h2><span class="e">📍</span>موقعیت خانواده</h2>
+  <div class="card stack" style="background:${LOCON?"var(--t-green)":"var(--surface)"}"><div class="row between"><b>${LOCON?"🟢 موقعیت تو در حال اشتراک است":"⚪ موقعیت تو اشتراک گذاشته نمی‌شود"}</b></div>
+   <span class="muted">وقتی روشن است، هر یک دقیقه که اپ باز است موقعیتت برای خانواده فرستاده می‌شود. وقتی اپ بسته است چیزی فرستاده نمی‌شود.</span>
+   ${locErr?`<p class="err">${esc(locErr)}</p>`:""}
+   <button class="btn ${LOCON?"ghost":""}" data-act="locToggle">${LOCON?"خاموش کردن اشتراک موقعیت":"روشن کردن اشتراک موقعیت من"}</button></div>
+  <div class="stack" style="margin-top:12px">${L.length?L.map(([k,v])=>{const isMe=k===SY.email;const d=me&&!isMe?km(me,v):null;
+    return `<div class="card stack"><div class="row">${bub(isMe?"🙋":"💚",k)}<div class="grow"><b>${esc(v.n||k)}${isMe?" (تو)":""}</b><br><span class="muted">آخرین موقعیت: ${ago(v.t)}${v.acc?" · دقت حدود "+fa(v.acc)+" متر":""}${d!==null?" · فاصله با تو: "+(d<1?fa(Math.round(d*1000))+" متر":fa(+d.toFixed(1))+" کیلومتر"):""}</span></div></div>
+    <div class="row"><a class="btn small grow" style="text-align:center;text-decoration:none" href="https://neshan.org/maps/@${v.lat},${v.lng},16z">🗺️ نشان</a><a class="btn small ghost grow" style="text-align:center;text-decoration:none" href="https://www.google.com/maps?q=${v.lat},${v.lng}">گوگل مپ</a><button class="btn small ghost" data-copyloc="${v.lat},${v.lng}">کپی</button></div></div>`}).join("")
+   :`<div class="card">${empty("📍","هنوز کسی موقعیتش را به اشتراک نگذاشته.")}</div>`}</div>`;
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-act=locToggle],[data-copyloc]");if(!b)return;
+  if(b.dataset.copyloc){copy(b.dataset.copyloc);return}
+  LOCON=!LOCON;try{localStorage.setItem("home-locshare",LOCON?"1":"0")}catch(e){}
+  if(!LOCON&&S.loc&&S.loc[SY.email]){delete S.loc[SY.email];S._m=S._m||{tomb:{}};push()}
+  render();if(LOCON){toast("اشتراک موقعیت روشن شد");locTick()}else toast("اشتراک موقعیت خاموش شد")},true);
+{const _vm=vMore;vMore=function(){return _vm().replace('<div class="tiles">','<div class="tiles"><button class="tile c4" data-go="family"><span class="ti">📍</span><b>موقعیت خانواده</b><span>'+(LOCON?"اشتراک روشن":"اشتراک خاموش")+'</span></button>')}}
+{const _r=render;render=function(){if(route==="family"&&UNLOCKED){$("#view").innerHTML=vFamily();renderTabs();$("#unitBtn").textContent=U();return}_r()}}
 </script>
 <script>
 /* ---------- Android (Capacitor): local notifications + back button ---------- */
@@ -1036,7 +1083,7 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-sync
   schedule();
   if(APP) APP.addListener("backButton",()=>{
     const sh=document.querySelector(".sheet-bg"); if(sh){sh.remove();return}
-    if(route!=="home"){go(["inst","todo","save","report","accounts","settings","cards"].includes(route)?"more":"home");return}
+    if(route!=="home"){go(["inst","todo","save","report","accounts","settings","cards","family"].includes(route)?"more":"home");return}
     APP.exitApp();
   });
   window.Notification=undefined;
