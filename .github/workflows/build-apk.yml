@@ -88,10 +88,215 @@ jobs:
         run: sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <application#' android/app/src/main/AndroidManifest.xml
       - name: Fixed signing key
         run: mkdir -p ~/.android && cp debug.keystore ~/.android/debug.keystore
+      - name: Native features (SMS, fingerprint, widget)
+        run: |
+          mkdir -p bak app/src/main/java/ir/dakhlkharj/app android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/drawable
+          cp android/app/src/main/AndroidManifest.xml bak/ && cp android/app/build.gradle bak/ && cp android/app/src/main/java/ir/dakhlkharj/app/MainActivity.java bak/
+          cat > android/app/src/main/java/ir/dakhlkharj/app/HomeNativePlugin.java <<'JAVA1'
+          package ir.dakhlkharj.app;
+
+          import android.Manifest;
+          import android.content.Context;
+          import android.content.SharedPreferences;
+          import android.database.Cursor;
+          import android.net.Uri;
+          import androidx.biometric.BiometricManager;
+          import androidx.biometric.BiometricPrompt;
+          import androidx.core.content.ContextCompat;
+          import com.getcapacitor.JSArray;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.PermissionState;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+          import com.getcapacitor.annotation.Permission;
+          import com.getcapacitor.annotation.PermissionCallback;
+          import java.util.concurrent.Executor;
+
+          @CapacitorPlugin(name = "HomeNative", permissions = { @Permission(alias = "sms", strings = { Manifest.permission.READ_SMS }) })
+          public class HomeNativePlugin extends Plugin {
+
+              @PluginMethod
+              public void readSms(PluginCall call) {
+                  if (getPermissionState("sms") != PermissionState.GRANTED) {
+                      requestPermissionForAlias("sms", call, "smsPermCallback");
+                      return;
+                  }
+                  doReadSms(call);
+              }
+
+              @PermissionCallback
+              private void smsPermCallback(PluginCall call) {
+                  if (getPermissionState("sms") == PermissionState.GRANTED) doReadSms(call);
+                  else call.reject("denied");
+              }
+
+              private void doReadSms(PluginCall call) {
+                  long since = 0L;
+                  try { since = Long.parseLong(call.getString("since", "0")); } catch (Exception ignored) {}
+                  JSArray arr = new JSArray();
+                  Cursor c = null;
+                  try {
+                      c = getContext().getContentResolver().query(Uri.parse("content://sms/inbox"),
+                          new String[] { "address", "body", "date" }, "date > ?", new String[] { String.valueOf(since) }, "date DESC");
+                      int n = 0;
+                      while (c != null && c.moveToNext() && n < 300) {
+                          JSObject o = new JSObject();
+                          o.put("address", c.getString(0));
+                          o.put("body", c.getString(1));
+                          o.put("date", c.getLong(2));
+                          arr.put(o);
+                          n++;
+                      }
+                  } catch (Exception e) {
+                      call.reject(String.valueOf(e.getMessage()));
+                      return;
+                  } finally {
+                      if (c != null) c.close();
+                  }
+                  JSObject r = new JSObject();
+                  r.put("messages", arr);
+                  call.resolve(r);
+              }
+
+              @PluginMethod
+              public void bioAuth(PluginCall call) {
+                  getActivity().runOnUiThread(() -> {
+                      try {
+                          Executor ex = ContextCompat.getMainExecutor(getContext());
+                          BiometricPrompt bp = new BiometricPrompt(getActivity(), ex, new BiometricPrompt.AuthenticationCallback() {
+                              @Override
+                              public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) { call.resolve(); }
+                              @Override
+                              public void onAuthenticationError(int code, CharSequence msg) { call.reject(String.valueOf(msg)); }
+                          });
+                          BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+                              .setTitle("ورود به دخل و خرج خانه")
+                              .setNegativeButtonText("انصراف")
+                              .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+                              .build();
+                          bp.authenticate(info);
+                      } catch (Exception e) {
+                          call.reject(String.valueOf(e.getMessage()));
+                      }
+                  });
+              }
+
+              @PluginMethod
+              public void setWidget(PluginCall call) {
+                  SharedPreferences sp = getContext().getSharedPreferences("home_widget", Context.MODE_PRIVATE);
+                  sp.edit()
+                      .putString("title", call.getString("title", ""))
+                      .putString("line1", call.getString("line1", ""))
+                      .putString("line2", call.getString("line2", ""))
+                      .putString("line3", call.getString("line3", ""))
+                      .apply();
+                  HomeWidget.refresh(getContext());
+                  call.resolve();
+              }
+          }
+          JAVA1
+          cat > android/app/src/main/java/ir/dakhlkharj/app/HomeWidget.java <<'JAVA2'
+          package ir.dakhlkharj.app;
+
+          import android.app.PendingIntent;
+          import android.appwidget.AppWidgetManager;
+          import android.appwidget.AppWidgetProvider;
+          import android.content.ComponentName;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.widget.RemoteViews;
+
+          public class HomeWidget extends AppWidgetProvider {
+              @Override
+              public void onUpdate(Context ctx, AppWidgetManager m, int[] ids) {
+                  for (int id : ids) draw(ctx, m, id);
+              }
+
+              static void draw(Context ctx, AppWidgetManager m, int id) {
+                  SharedPreferences sp = ctx.getSharedPreferences("home_widget", Context.MODE_PRIVATE);
+                  RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.home_widget);
+                  v.setTextViewText(R.id.w_title, sp.getString("title", "دخل و خرج خانه"));
+                  v.setTextViewText(R.id.w_line1, sp.getString("line1", "اپ را یک بار باز کن"));
+                  v.setTextViewText(R.id.w_line2, sp.getString("line2", ""));
+                  v.setTextViewText(R.id.w_line3, sp.getString("line3", ""));
+                  Intent i = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+                  if (i != null) {
+                      PendingIntent pi = PendingIntent.getActivity(ctx, 0, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                      v.setOnClickPendingIntent(R.id.w_root, pi);
+                  }
+                  m.updateAppWidget(id, v);
+              }
+
+              static void refresh(Context ctx) {
+                  AppWidgetManager m = AppWidgetManager.getInstance(ctx);
+                  int[] ids = m.getAppWidgetIds(new ComponentName(ctx, HomeWidget.class));
+                  for (int id : ids) draw(ctx, m, id);
+              }
+          }
+          JAVA2
+          cat > android/app/src/main/java/ir/dakhlkharj/app/MainActivity.java <<'JAVA3'
+          package ir.dakhlkharj.app;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(HomeNativePlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          JAVA3
+          cat > android/app/src/main/res/layout/home_widget.xml <<'XML1'
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+              android:orientation="vertical" android:padding="14dp" android:background="@drawable/home_widget_bg">
+              <TextView android:id="@+id/w_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:textColor="#FFFFFF" android:textSize="17sp" android:textStyle="bold" android:maxLines="1" android:gravity="start" />
+              <TextView android:id="@+id/w_line1" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp" android:textColor="#DDF1E7" android:textSize="13sp" android:maxLines="1" android:gravity="start" />
+              <TextView android:id="@+id/w_line2" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp" android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="2" android:gravity="start" />
+              <TextView android:id="@+id/w_line3" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:layout_marginTop="4dp" android:textColor="#F7C64A" android:textSize="12sp" android:maxLines="1" android:gravity="start" />
+          </LinearLayout>
+          XML1
+          cat > android/app/src/main/res/drawable/home_widget_bg.xml <<'XML2'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+              <solid android:color="#0F5A4B" />
+              <corners android:radius="22dp" />
+          </shape>
+          XML2
+          cat > android/app/src/main/res/xml/home_widget_info.xml <<'XML3'
+          <?xml version="1.0" encoding="utf-8"?>
+          <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+              android:minWidth="180dp" android:minHeight="110dp"
+              android:updatePeriodMillis="1800000"
+              android:initialLayout="@layout/home_widget"
+              android:resizeMode="horizontal|vertical"
+              android:widgetCategory="home_screen" />
+          XML3
+          sed -i 's#<application#<uses-permission android:name="android.permission.READ_SMS" />\n    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#</application>#    <receiver android:name=".HomeWidget" android:exported="true" android:label="دخل و خرج خانه"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/home_widget_info" /></receiver>\n    </application>#' android/app/src/main/AndroidManifest.xml
+          sed -i '0,/^dependencies {/s//dependencies {\n    implementation "androidx.biometric:biometric:1.1.0"/' android/app/build.gradle
+          grep -n 'biometric' android/app/build.gradle || true
       - name: Build
         run: |
+          J=app/src/main/java/ir/dakhlkharj/app
           cd android && chmod +x gradlew
-          ./gradlew assembleDebug || (cd .. && npm uninstall @capacitor/background-runner && npx cap sync android && cd android && ./gradlew assembleDebug)
+          if ./gradlew assembleDebug; then echo 'FULL BUILD OK'; exit 0; fi
+          echo 'NATIVE FEATURES FAILED - building without them'
+          cp ../bak/AndroidManifest.xml app/src/main/AndroidManifest.xml; cp ../bak/build.gradle app/build.gradle; printf 'package ir.dakhlkharj.app;\n\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {}\n' > $J/MainActivity.java
+          rm -f $J/HomeNativePlugin.java $J/HomeWidget.java app/src/main/res/layout/home_widget.xml app/src/main/res/xml/home_widget_info.xml app/src/main/res/drawable/home_widget_bg.xml
+          if ./gradlew assembleDebug; then exit 0; fi
+          echo 'BACKGROUND RUNNER FAILED - building without it'
+          cd .. && npm uninstall @capacitor/background-runner && npx cap sync android && cd android && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: dakhlkharj-apk
