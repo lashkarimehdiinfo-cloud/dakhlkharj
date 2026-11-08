@@ -1,0 +1,13 @@
+{
+  "appId": "ir.dakhlkharj.app",
+  "appName": "دخل و خرج خانه",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#0F5A4B"
+    }
+  }
+}
