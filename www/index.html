@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>دخل و خرج خانه</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=Vazirmatn:wght@400;500;700;800&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+/* layout: playful one-hand phone app — big greeting, gradient "bank card", colorful tinted tiles, donut of spending, floating tab bar + round add button. palette: pistachio, saffron, pomegranate, sky */
+:root{
+  --bg:#f5f3ee;--surface:#ffffff;--surface2:#efece4;--ink:#1d2421;--muted:#6a716c;--line:#e6e1d6;
+  --brand:#14735c;--brand2:#0b4d3f;--brand-ink:#ffffff;--saffron:#f2a900;--pom:#e2475f;--sky:#2f8fd8;--grape:#8a5cd0;
+  --in:#178a57;--out:#d13d4b;--warn:#c27c0e;
+  --t-green:#e1f3ea;--t-saf:#fdf0cf;--t-pom:#fde3e6;--t-sky:#e0effb;--t-grape:#eee6fa;
+  --shadow:0 6px 18px rgba(40,50,40,.08),0 1px 3px rgba(40,50,40,.06);
+  --display:"Lalezar","Vazirmatn",system-ui,sans-serif;--body:"Vazirmatn",Tahoma,system-ui,sans-serif;--r:20px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111614;--surface:#1a211e;--surface2:#232c28;--ink:#eef3f0;--muted:#9aa8a1;--line:#2b3631;
+  --brand:#3fbf98;--brand2:#1d7a62;--brand-ink:#08140f;--saffron:#f7bf3c;--pom:#ff7186;--sky:#5fb2f0;--grape:#b18cf0;
+  --in:#4fd197;--out:#ff7b80;--warn:#f0b04a;
+  --t-green:#173129;--t-saf:#352b12;--t-pom:#3a1d23;--t-sky:#16293a;--t-grape:#2a2140;
+  --shadow:0 6px 18px rgba(0,0,0,.35);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614;--surface:#1a211e;--surface2:#232c28;--ink:#eef3f0;--muted:#9aa8a1;--line:#2b3631;
+  --brand:#3fbf98;--brand2:#1d7a62;--brand-ink:#08140f;--saffron:#f7bf3c;--pom:#ff7186;--sky:#5fb2f0;--grape:#b18cf0;
+  --in:#4fd197;--out:#ff7b80;--warn:#f0b04a;
+  --t-green:#173129;--t-saf:#352b12;--t-pom:#3a1d23;--t-sky:#16293a;--t-grape:#2a2140;
+  --shadow:0 6px 18px rgba(0,0,0,.35);color-scheme:dark}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:15px;line-height:1.65;direction:rtl;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px;
+  font-variant-numeric:tabular-nums;
+  background-image:radial-gradient(circle at 100% 0,color-mix(in srgb,var(--saffron) 14%,transparent) 0,transparent 260px),radial-gradient(circle at 0 120px,color-mix(in srgb,var(--brand) 10%,transparent) 0,transparent 240px);background-repeat:no-repeat}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:560px;margin:0 auto}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;padding-block:14px 10px;display:flex;align-items:center;gap:10px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.sunny{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;font-size:24px;flex:none;background:var(--t-saf);box-shadow:var(--shadow)}
+.hello{font-family:var(--display);font-size:25px;line-height:1.15;margin:0;color:var(--ink)}
+.hello em{font-style:normal;color:var(--brand)}
+.today{font-size:12.5px;color:var(--muted)}
+.unit{font:inherit;font-size:12px;font-weight:700;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer;margin-inline-start:auto}
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:22px 0 10px;text-wrap:balance;display:flex;align-items:center;gap:8px}
+h2 .e{font-size:20px}
+h3{font-size:15px;margin:0 0 6px}
+.card{background:var(--surface);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.muted{color:var(--muted);font-size:13px}
+.in{color:var(--in)}.out{color:var(--out)}
+.big{font-size:28px;font-weight:800;letter-spacing:-.3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{font:inherit;font-weight:700;border:0;border-radius:14px;padding:11px 16px;background:var(--brand);color:var(--brand-ink);cursor:pointer;box-shadow:0 4px 12px color-mix(in srgb,var(--brand) 30%,transparent);transition:transform .12s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:var(--surface2);color:var(--ink);box-shadow:none}
+.btn.small{padding:7px 12px;font-size:13px;border-radius:12px}
+.btn.saf{background:var(--saffron);color:#2a1d00;box-shadow:0 4px 12px color-mix(in srgb,var(--saffron) 35%,transparent)}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,.navb:focus-visible,.tile:focus-visible,.fab:focus-visible{outline:2.5px solid var(--saffron);outline-offset:2px}
+.btn:disabled{opacity:.5}
+.icon{background:none;border:0;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;border-radius:8px}
+.icon.danger{color:var(--out);font-weight:700}
+.list{display:flex;flex-direction:column}
+.card.list{padding-block:6px}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.item:last-child{border-bottom:0}
+.item .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.done .t{text-decoration:line-through;color:var(--muted)}
+.done .bub{filter:grayscale(1);opacity:.6}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:9px;border:2px solid var(--line);background:var(--surface);flex:none;cursor:pointer;display:grid;place-items:center;transition:all .15s}
+input[type=checkbox]:checked{background:var(--brand);border-color:var(--brand)}
+input[type=checkbox]:checked::after{content:"✓";color:var(--brand-ink);font-weight:800;font-size:15px}
+@media (prefers-reduced-motion:no-preference){input[type=checkbox]:checked{animation:pop .3s ease}@keyframes pop{50%{transform:scale(1.25)}}}
+.bub{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;font-size:20px;flex:none;background:var(--t-green)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 13px;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:1px 9px;background:var(--surface2);color:var(--muted)}
+.pill.warn{background:var(--t-saf);color:var(--warn)}
+.pill.bad{background:var(--t-pom);color:var(--out)}
+.pill.ok{background:var(--t-green);color:var(--in)}
+.bar{height:10px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),color-mix(in srgb,var(--brand) 60%,var(--saffron)));border-radius:99px}
+.alert{display:flex;gap:12px;align-items:center;padding:12px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow);text-align:right;font:inherit;color:var(--ink);border:0;cursor:pointer;width:100%}
+.alert b{font-weight:700}
+.alert .bub{width:38px;height:38px;font-size:18px}
+.alert.bad .bub{background:var(--t-pom)}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:9px;flex:none;background:var(--saffron)}
+.dot.bad{background:var(--out)}
+/* gradient money card */
+.wallet{position:relative;overflow:hidden;border-radius:26px;padding:20px;color:#fff;
+  background:linear-gradient(135deg,var(--brand) 0%,var(--brand2) 70%);box-shadow:0 14px 30px color-mix(in srgb,var(--brand) 35%,transparent)}
+.wallet::before,.wallet::after{content:"";position:absolute;border-radius:50%}
+.wallet::before{width:220px;height:220px;left:-60px;top:-90px;background:color-mix(in srgb,var(--saffron) 55%,transparent);opacity:.35}
+.wallet::after{width:150px;height:150px;right:-40px;bottom:-70px;background:#fff;opacity:.08}
+.wallet>*{position:relative}
+.wallet .lab{font-size:13px;opacity:.85}
+.wallet .big{font-size:32px;color:#fff}
+.wallet .mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.wallet .mini>div{background:rgba(255,255,255,.14);border-radius:14px;padding:8px 12px}
+.wallet .mini b{display:block;font-size:15px}
+.wallet .meter{height:8px;background:rgba(255,255,255,.2);border-radius:99px;margin-top:14px;overflow:hidden}
+.wallet .meter i{display:block;height:100%;background:var(--saffron);border-radius:99px}
+.wallet .note{font-size:12.5px;opacity:.9;margin-top:6px}
+.donut-wrap{display:flex;align-items:center;gap:16px}
+.donut{width:118px;height:118px;border-radius:50%;flex:none;position:relative;display:grid;place-items:center}
+.donut::after{content:"";position:absolute;inset:18px;border-radius:50%;background:var(--surface)}
+.donut span{position:relative;z-index:1;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.3}
+.donut span b{display:block;font-size:15px;color:var(--ink)}
+.legend{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;font-size:13px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:4px;margin-inline-end:6px;vertical-align:middle}
+nav.tabs{position:fixed;z-index:20;bottom:calc(10px + env(safe-area-inset-bottom,0px));left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));
+  max-width:536px;margin:0 auto;background:var(--surface);border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,.14);
+  display:grid;grid-template-columns:repeat(5,1fr);padding:6px}
+.navb{font:inherit;font-size:11px;background:none;border:0;color:var(--muted);padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;border-radius:18px;transition:background .2s}
+.navb svg{width:22px;height:22px}
+.navb.on{color:var(--brand);font-weight:800;background:var(--t-green)}
+.fab{position:fixed;z-index:21;left:max(22px,calc(env(safe-area-inset-left,0px) + 22px));bottom:calc(88px + env(safe-area-inset-bottom,0px));
+  width:58px;height:58px;border-radius:20px;border:0;font-size:30px;line-height:1;cursor:pointer;
+  background:linear-gradient(140deg,var(--saffron),color-mix(in srgb,var(--saffron) 60%,var(--pom)));color:#2a1d00;box-shadow:0 10px 22px color-mix(in srgb,var(--saffron) 45%,transparent)}
+.fab:active{transform:scale(.92)}
+.sheet-bg{position:fixed;inset:0;z-index:70;background:rgba(10,20,15,.45);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:28px 28px 0 0;
+  padding:12px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+.sheet::before{content:"";display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+input[type=text],input[type=number],select,textarea{font:inherit;width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.seg{display:flex;background:var(--surface2);border-radius:16px;padding:4px}
+.seg button{flex:1;font:inherit;border:0;background:none;color:var(--muted);padding:8px;border-radius:12px;cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:800;box-shadow:var(--shadow)}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.tile{font:inherit;text-align:right;border:0;border-radius:22px;padding:16px;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:transform .12s;background:var(--t-green)}
+.tile:active{transform:scale(.97)}
+.tile .ti{font-size:28px;line-height:1}
+.tile b{display:block;font-size:15px}
+.tile span{font-size:12px;color:var(--muted)}
+.tile.c1{background:var(--t-green)}.tile.c2{background:var(--t-saf)}.tile.c3{background:var(--t-pom)}.tile.c4{background:var(--t-sky)}.tile.c5{background:var(--t-grape)}
+.banner{background:var(--t-saf);border-radius:18px;padding:12px 14px;font-size:13px}
+.week{display:flex;flex-direction:column;gap:8px}
+.day{display:grid;grid-template-columns:68px 1fr 1fr;gap:6px;align-items:stretch}
+.day .dn{font-weight:800;font-size:13px;display:flex;align-items:center}
+.day .dn.now{color:var(--brand)}
+.day .dn.now::after{content:"امروز";font-size:10px;background:var(--saffron);color:#2a1d00;border-radius:99px;padding:0 6px;margin-inline-start:4px}
+.slot{font:inherit;font-size:13px;text-align:right;background:var(--surface);border:1.5px dashed var(--line);border-radius:14px;padding:9px;color:var(--muted);cursor:pointer;min-width:0;overflow-wrap:anywhere}
+.slot.f{border:0;color:var(--ink);background:var(--t-saf);font-weight:500}
+.recipe{display:flex;gap:12px;align-items:flex-start}
+.recipe .bub{width:54px;height:54px;font-size:28px;border-radius:18px;background:var(--t-saf)}
+.ai{white-space:pre-wrap;font-size:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:80;background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:999px;font-size:13px;font-weight:700;box-shadow:var(--shadow)}
+.back{display:inline-flex;align-items:center;gap:4px;margin-top:6px}
+.empty{text-align:center;padding:18px 8px;color:var(--muted);font-size:13.5px}
+.empty .ee{font-size:40px;display:block;margin-bottom:4px}
+.confetti{position:fixed;top:-30px;z-index:50;font-size:22px;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){
+  .sheet{animation:up .25s cubic-bezier(.2,.9,.3,1.2)}@keyframes up{from{transform:translateY(40px);opacity:.5}}
+  #view>*{animation:fade .3s ease both}@keyframes fade{from{opacity:.4;transform:translateY(6px)}}
+  .confetti{animation:fall 1.6s ease-in forwards}@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.8}}
+  .sunny{animation:bob 3s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-3px) rotate(-4deg)}}}
+.lock{position:fixed;inset:0;z-index:60;overflow:auto;background:var(--bg);
+  background-image:radial-gradient(circle at 85% 10%,color-mix(in srgb,var(--saffron) 25%,transparent) 0,transparent 280px),radial-gradient(circle at 10% 90%,color-mix(in srgb,var(--brand) 22%,transparent) 0,transparent 300px);
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(24px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+.lockbox{width:100%;max-width:380px;background:var(--surface);border-radius:28px;padding:24px 20px;box-shadow:0 20px 50px rgba(0,0,0,.15)}
+.lockbox .logo{font-size:52px;text-align:center;line-height:1.1}
+.pw{position:relative}
+.pw input{padding-left:46px}
+.eye{position:absolute;left:6px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:20px;cursor:pointer;padding:6px;border-radius:10px}
+.err{color:var(--out);font-size:13px;margin:0;min-height:1em}
+.dots{display:flex;justify-content:center;gap:16px;direction:ltr;margin:6px 0}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--brand);transition:background .15s}
+.dots i.on{background:var(--brand)}
+.dots.shake{animation:shake .35s}@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;direction:ltr;max-width:280px;margin:0 auto;width:100%}
+.pad button{font:inherit;font-size:24px;font-weight:700;aspect-ratio:1.35;border:0;border-radius:20px;background:var(--surface2);color:var(--ink);cursor:pointer;max-width:100%}
+.pad button:active{background:var(--t-green);transform:scale(.95)}
+.bank{position:relative;overflow:hidden;color:#fff;border-radius:20px;padding:18px;aspect-ratio:1.586;max-width:100%;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.bank::after{content:"";position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.1);left:-50px;bottom:-90px}
+.bank>*{position:relative;z-index:1}
+.bank .num{font-size:clamp(15px,4.6vw,20px);letter-spacing:1px;white-space:nowrap;font-weight:700;text-align:center;font-family:ui-monospace,"Vazirmatn",monospace}
+.bank .small{font-size:12.5px;opacity:.9}
+.bank .chipicon{width:38px;height:28px;border-radius:6px;background:linear-gradient(135deg,#f6d27a,#c9972e)}
+.bank .bk{position:absolute;top:44px;right:18px;font-size:11.5px;opacity:.8}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="sunny" id="sunny" aria-hidden="true">☀️</div>
+    <div class="grow"><p class="hello" id="hello">سلام</p><div class="today" id="today"></div></div>
+    <button class="unit" id="unitBtn" aria-label="واحد پول"></button>
+  </header>
+  <main id="view"></main>
+</div>
+<div id="lock" class="lock" hidden></div>
+<nav class="tabs" id="tabs"></nav>
+<button class="fab" id="quickAdd" aria-label="ثبت سریع خرج">+</button>
+<input type="file" id="photo" accept="image/*" capture="environment" hidden>
+
+<script>
+/* ---------- utils ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const fa=n=>Number(n||0).toLocaleString("fa-IR");
+const RIAL=()=>S&&S.unit==="rial";const U=()=>RIAL()?"ریال":"تومان";const F=()=>RIAL()?10:1;
+const toman=n=>(n<0?"منفی ":"")+fa(Math.abs(Math.round(n*F())))+" "+U();
+const enDigits=s=>String(s??"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+const num=s=>Number(enDigits(s).replace(/[^\d.]/g,""))||0;
+const norm=s=>String(s||"").replace(/ي/g,"ی").replace(/ك/g,"ک").replace(/[\s‌‌-]/g,"").toLowerCase();
+function g2j(gy,gm,gd){const g=[0,31,59,90,120,151,181,212,243,273,304,334];const gy2=gm>2?gy+1:gy;let d=355666+365*gy+~~((gy2+3)/4)-~~((gy2+99)/100)+~~((gy2+399)/400)+gd+g[gm-1];let jy=-1595+33*~~(d/12053);d%=12053;jy+=4*~~(d/1461);d%=1461;if(d>365){jy+=~~((d-1)/365);d=(d-1)%365}const jm=d<186?1+~~(d/31):7+~~((d-186)/30);const jd=d<186?1+d%31:1+(d-186)%30;return[jy,jm,jd]}
+function j2g(jy,jm,jd){jy+=1595;let d=-355668+365*jy+~~(jy/33)*8+~~(((jy%33)+3)/4)+jd+(jm<7?(jm-1)*31:(jm-7)*30+186);let gy=400*~~(d/146097);d%=146097;if(d>36524){gy+=100*~~(--d/36524);d%=36524;if(d>=365)d++}gy+=4*~~(d/1461);d%=1461;if(d>365){gy+=~~((d-1)/365);d=(d-1)%365}let gd=d+1;const s=[0,31,(gy%4===0&&gy%100!==0)||gy%400===0?29:28,31,30,31,30,31,31,30,31,30,31];let gm;for(gm=0;gm<13&&gd>s[gm];gm++)gd-=s[gm];return[gy,gm,gd]}
+const MONTHS=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+const WDAYS=["شنبه","یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه"];
+const pad=n=>String(n).padStart(2,"0");
+function todayJ(){const d=new Date();return g2j(d.getFullYear(),d.getMonth()+1,d.getDate())}
+const jstr=a=>a[0]+"/"+pad(a[1])+"/"+pad(a[2]);
+const jparse=s=>{const m=enDigits(s||"").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);return m?[+m[1],+m[2],+m[3]]:null};
+const jfa=s=>{const a=jparse(s);return a?fa(a[2])+" "+MONTHS[a[1]-1]+(a[0]!==todayJ()[0]?" "+String(a[0]).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]):""):""};
+const jToDate=s=>{const a=jparse(s);if(!a)return null;const g=j2g(...a);return new Date(g[0],g[1]-1,g[2])};
+function daysUntil(s){const d=jToDate(s);if(!d)return null;const t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
+function addMonthsJ(s,k){const a=jparse(s);let y=a[0],m=a[1]-1+k;y+=Math.floor(m/12);m=((m%12)+12)%12;const max=m<6?31:m<11?30:29;return jstr([y,m+1,Math.min(a[2],max)])}
+const weekIdx=()=>(new Date().getDay()+1)%7;
+
+/* ---------- data ---------- */
+const OUT_CATS=["سوپرمارکت","میوه و سبزی","گوشت و مرغ","نان","رستوران و بیرون‌بر","قبض‌ها","اجاره","بنزین و رفت‌وآمد","درمان","پوشاک","تفریح","اقساط","پس‌انداز","سایر"];
+const IN_CATS=["حقوق","پاداش","فروش","سایر درآمد"];
+const RECIPES=[
+ {n:"قورمه‌سبزی",i:["گوشت","لوبیا قرمز","سبزی قورمه","لیمو عمانی","پیاز","برنج"]},
+ {n:"قیمه",i:["گوشت","لپه","رب گوجه","سیب‌زمینی","پیاز","لیمو عمانی","برنج"]},
+ {n:"عدس‌پلو",i:["عدس","برنج","کشمش","پیاز","خرما"]},
+ {n:"ماکارونی",i:["ماکارونی","گوشت چرخ‌کرده","رب گوجه","پیاز","سیب‌زمینی"]},
+ {n:"کوکو سبزی",i:["سبزی کوکو","تخم‌مرغ","گردو","زرشک"]},
+ {n:"کوکو سیب‌زمینی",i:["سیب‌زمینی","تخم‌مرغ","پیاز"]},
+ {n:"املت",i:["تخم‌مرغ","گوجه","پیاز"]},
+ {n:"استانبولی",i:["برنج","سیب‌زمینی","رب گوجه","لوبیا سبز","پیاز"]},
+ {n:"عدسی",i:["عدس","پیاز","سیب‌زمینی"]},
+ {n:"آش رشته",i:["رشته آش","سبزی آش","نخود","لوبیا","عدس","کشک","پیاز"]},
+ {n:"کتلت",i:["گوشت چرخ‌کرده","سیب‌زمینی","تخم‌مرغ","پیاز"]},
+ {n:"زرشک‌پلو با مرغ",i:["مرغ","برنج","زرشک","پیاز","زعفران"]},
+ {n:"خورش بادمجان",i:["گوشت","بادمجان","رب گوجه","غوره","پیاز","برنج"]},
+ {n:"کشک بادمجان",i:["بادمجان","کشک","پیاز","گردو","سیر"]},
+ {n:"میرزاقاسمی",i:["بادمجان","گوجه","سیر","تخم‌مرغ"]},
+ {n:"الویه",i:["مرغ","سیب‌زمینی","تخم‌مرغ","خیارشور","سس مایونز"]},
+ {n:"کباب تابه‌ای",i:["گوشت چرخ‌کرده","پیاز","گوجه","برنج"]},
+ {n:"دمپختک",i:["برنج","باقلا","تخم‌مرغ","سیر"]},
+ {n:"لوبیاپلو",i:["برنج","لوبیا سبز","گوشت چرخ‌کرده","رب گوجه","پیاز"]},
+ {n:"سوپ جو",i:["جو","مرغ","هویج","پیاز","جعفری"]},
+ {n:"ته‌چین",i:["برنج","مرغ","ماست","تخم‌مرغ","زعفران"]},
+ {n:"خوراک لوبیا",i:["لوبیا قرمز","پیاز","رب گوجه","قارچ"]},
+ {n:"دلمه",i:["فلفل دلمه","گوشت چرخ‌کرده","برنج","لپه","پیاز"]},
+ {n:"ماهی و پلو",i:["ماهی","برنج","سبزی پلو","لیمو"]}
+];
+function sample0(){
+  const T=jstr(todayJ()),acc1=uid(),acc2=uid();
+  return {name:"مهدی",example:true,
+    accounts:[{id:acc1,name:"کارت حقوق",type:"card",init:4000000},{id:acc2,name:"نقدی",type:"cash",init:500000}],
+    tx:[
+      {id:uid(),type:"in",amount:25000000,cat:"حقوق",acc:acc1,date:T,note:"حقوق ماه"},
+      {id:uid(),type:"out",amount:1850000,cat:"سوپرمارکت",acc:acc1,date:T,note:"خرید هفتگی"},
+      {id:uid(),type:"out",amount:620000,cat:"میوه و سبزی",acc:acc2,date:T,note:""},
+      {id:uid(),type:"out",amount:980000,cat:"رستوران و بیرون‌بر",acc:acc1,date:T,note:"پیتزا"},
+      {id:uid(),type:"out",amount:2400000,cat:"گوشت و مرغ",acc:acc1,date:T,note:""}],
+    inst:[{id:uid(),title:"اقساط یخچال",amount:3200000,count:12,start:addMonthsJ(T,0).slice(0,8)+pad(Math.min(todayJ()[2]+3,29)),acc:acc1,paid:[0,1,2]}],
+    shop:[{id:uid(),name:"نان سنگک",qty:"۲ عدد",done:false},{id:uid(),name:"ماست",qty:"۱ سطل",done:false},{id:uid(),name:"پیاز",qty:"۱ کیلو",done:true}],
+    todo:[{id:uid(),text:"پرداخت قبض گاز",due:T,done:false},{id:uid(),text:"سرویس کولر",due:"",done:false}],
+    fridge:[{id:uid(),name:"تخم‌مرغ",qty:"۸ عدد",loc:"یخچال",exp:""},{id:uid(),name:"گوجه",qty:"۱ کیلو",loc:"یخچال",exp:addDays(T,2)},
+      {id:uid(),name:"مرغ",qty:"۱ کیلو",loc:"فریزر",exp:""},{id:uid(),name:"برنج",qty:"۵ کیلو",loc:"کابینت",exp:""},
+      {id:uid(),name:"سیب‌زمینی",qty:"۲ کیلو",loc:"کابینت",exp:""},{id:uid(),name:"عدس",qty:"۱ کیلو",loc:"کابینت",exp:""},{id:uid(),name:"پیاز",qty:"۱ کیلو",loc:"کابینت",exp:""}],
+    plan:{},
+    save:[{id:uid(),title:"سفر عید",target:30000000,saved:6000000}]
+  };
+}
+function addDays(s,k){const d=jToDate(s);d.setDate(d.getDate()+k);return jstr(g2j(d.getFullYear(),d.getMonth()+1,d.getDate()))}
+let S=null;const KEY="home-budget-v1";
+function blank(){return {name:"مهدی",accounts:[{id:uid(),name:"نقدی",type:"cash",init:0}],tx:[],inst:[],shop:[],todo:[],fridge:[],plan:{},save:[]}}
+try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
+if(!S)S=sample0();
+let dbRef=null,saveT=null;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  clearTimeout(saveT);saveT=setTimeout(()=>{if(dbRef)dbRef.set({state:JSON.stringify(S),at:Date.now()}).catch(()=>{})},700)}
+(async()=>{try{
+  const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);if(!db||!user)return;
+  const id=await user.id();if(!id)return;dbRef=db.doc("data/users/"+id+"/home");
+  const snap=await dbRef.get();
+  if(snap.exists){const d=snap.data();if(d&&d.state){const loc=S;S=JSON.parse(d.state);if(!S.auth&&loc.auth)S.auth=loc.auth;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}}
+  else save();
+  vaultRef=db.doc("data/users/"+id+"/vault");const vs=await vaultRef.get();
+  if(vs.exists&&vs.data().box){VBOX=JSON.parse(vs.data().box);try{localStorage.setItem(KEY+"-vault",vs.data().box)}catch(e){}}
+  else if(VBOX)vaultRef.set({box:JSON.stringify(VBOX),at:Date.now()}).catch(()=>{});
+}catch(e){}finally{setTimeout(()=>readyRes(),0)}})();
+let SAMPLE=null,IMG=false;
+(async()=>{try{SAMPLE=await claude.use("sample");if(SAMPLE){const l=await SAMPLE.limits().catch(()=>null);IMG=!!(l&&l.images)}render()}catch(e){}})();
+
+/* ---------- derived ---------- */
+const accById=id=>S.accounts.find(a=>a.id===id);
+function balance(acc){return (acc.init||0)+S.tx.filter(t=>t.acc===acc.id).reduce((s,t)=>s+(t.type==="in"?t.amount:-t.amount),0)}
+const monthKey=s=>{const a=jparse(s);return a?a[0]*100+a[1]:0};
+function monthTx(ym){return S.tx.filter(t=>monthKey(t.date)===ym)}
+function instDue(it,i){return addMonthsJ(it.start,i)}
+function instNext(it){for(let i=0;i<it.count;i++)if(!it.paid.includes(i))return i;return -1}
+function have(ing){const n=norm(ing);return S.fridge.some(f=>{const m=norm(f.name);return m&&(m.includes(n)||n.includes(m))})}
+function scoreRecipes(){return RECIPES.map(r=>{const miss=r.i.filter(x=>!have(x));return {...r,miss,score:(r.i.length-miss.length)/r.i.length}}).sort((a,b)=>b.score-a.score||a.miss.length-b.miss.length)}
+function greeting(){const h=new Date().getHours();return h<5?"شب بخیر":h<11?"صبح بخیر":h<16?"ظهر بخیر":h<20?"عصر بخیر":"شب بخیر"}
+function alerts(){
+  const A=[];
+  S.inst.forEach(it=>{const i=instNext(it);if(i<0)return;const d=daysUntil(instDue(it,i));
+    if(d!==null&&d<=5)A.push({bad:d<0,t:`قسط ${it.title}`,s:d<0?`${fa(-d)} روز عقب افتاده — ${toman(it.amount)}`:d===0?`امروز — ${toman(it.amount)}`:`${fa(d)} روز دیگر — ${toman(it.amount)}`,go:"inst"})});
+  S.fridge.forEach(f=>{if(!f.exp)return;const d=daysUntil(f.exp);if(d!==null&&d<=2)A.push({bad:d<0,t:f.name,s:d<0?"تاریخش گذشته":d===0?"امروز باید مصرف شود":`${fa(d)} روز تا انقضا`,go:"kitchen"})});
+  S.todo.forEach(t=>{if(t.done||!t.due)return;const d=daysUntil(t.due);if(d!==null&&d<=0)A.push({bad:d<0,t:t.text,s:d<0?"کار عقب افتاده":"کار امروز",go:"todo"})});
+  const n=S.shop.filter(x=>!x.done).length;if(n)A.push({t:"لیست خرید",s:`${fa(n)} قلم مانده`,go:"shop"});
+  const p=S.plan[weekIdx()];if(p&&(p.l||p.d))A.push({t:"غذای امروز",s:[p.l&&"ناهار: "+p.l,p.d&&"شام: "+p.d].filter(Boolean).join(" · "),go:"kitchen"});
+  return A;
+}
+
+/* ---------- ui helpers ---------- */
+let route="home",sub=null,kTab="fridge",fLoc="همه",repM=null,txFilter="all",hM=0,hCat="all",hType="all",hQ="";
+function toast(m){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
+function go(r,s=null){route=r;sub=s;render();scrollTo(0,0)}
+function sheet(html,bind){const bg=document.createElement("div");bg.className="sheet-bg";bg.innerHTML=`<div class="sheet" role="dialog">${html}</div>`;
+  bg.addEventListener("click",e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);bind&&bind(bg.querySelector(".sheet"),()=>bg.remove());return bg}
+function moneyInput(el){el.addEventListener("input",()=>{const v=num(el.value);el.value=v?v.toLocaleString("en"):""})}
+function form(title,fields,onSave,extra=""){
+  const html=`<h2 style="margin-top:0">${esc(title)}</h2><form class="stack" id="f">${fields.map(f=>{
+    const v=f.value??"";
+    if(f.type==="seg")return `<div class="seg" data-k="${f.k}">${f.options.map(o=>`<button type="button" data-v="${esc(o[0])}" class="${o[0]===v?"on":""}">${esc(o[1])}</button>`).join("")}</div>`;
+    if(f.type==="select")return `<div class="field"><label for="f_${f.k}">${f.label}</label><select id="f_${f.k}" name="${f.k}">${f.options.map(o=>{const[val,lab]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${val===v?"selected":""}>${esc(lab)}</option>`}).join("")}</select></div>`;
+    const im=f.type==="money"||f.type==="int"?'inputmode="numeric"':f.type==="jdate"?'inputmode="numeric" placeholder="۱۴۰۵/۰۸/۱۷"':"";
+    const val=f.type==="money"&&v?Math.round(Number(v)*F()).toLocaleString("en"):v;
+    return `<div class="field"><label for="f_${f.k}">${f.label}${f.type==="jdate"?' <span class="muted">(سال/ماه/روز)</span>':""}</label><input type="text" id="f_${f.k}" name="${f.k}" ${im} value="${esc(val)}" ${f.ph?`placeholder="${esc(f.ph)}"`:""} autocomplete="off"></div>`}).join("")}
+    ${extra}<div class="row"><button class="btn grow" type="submit">ذخیره</button><button class="btn ghost" type="button" id="cx">انصراف</button></div></form>`;
+  sheet(html,(sh,close)=>{
+    sh.querySelectorAll(".seg").forEach(sg=>sg.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;sg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));sg.dispatchEvent(new Event("change",{bubbles:true}))}));
+    fields.filter(f=>f.type==="money").forEach(f=>moneyInput(sh.querySelector("#f_"+f.k)));
+    sh.querySelector("#cx").onclick=close;
+    fields.onMount&&fields.onMount(sh);
+    sh.querySelector("#f").onsubmit=e=>{e.preventDefault();const o={};fields.forEach(f=>{
+      if(f.type==="seg"){o[f.k]=sh.querySelector(`.seg[data-k="${f.k}"] .on`)?.dataset.v;return}
+      const val=sh.querySelector("#f_"+f.k).value.trim();
+      o[f.k]=f.type==="money"?num(val)/F():f.type==="int"?num(val):f.type==="jdate"?(jparse(val)?jstr(jparse(val)):""):val});
+      if(onSave(o,sh)!==false){close();save();render()}};
+    setTimeout(()=>sh.querySelector("input[type=text]")?.focus(),60);
+  });
+}
+function delBtn(onDel,label="حذف"){return {label,onDel}}
+// two-tap delete
+document.addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;e.stopPropagation();
+  if(b.dataset.armed){const [coll,id]=b.dataset.del.split(":");S[coll]=S[coll].filter(x=>x.id!==id);save();render();return}
+  b.dataset.armed=1;b.textContent="مطمئنی؟";b.classList.add("danger");setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="حذف"}},2500)},true);
+
+/* ---------- forms ---------- */
+function txForm(t={},preset={}){
+  const isNew=!t.id;const type=t.type||preset.type||"out";
+  const accs=S.accounts.map(a=>[a.id,a.name]);
+  const fields=[
+    {k:"type",type:"seg",value:type,options:[["out","خرج"],["in","درآمد"]]},
+    {k:"amount",label:"مبلغ ("+U()+")",type:"money",value:t.amount||preset.amount||""},
+    {k:"cat",label:"دسته",type:"select",value:t.cat||preset.cat||(type==="in"?"حقوق":"سوپرمارکت"),options:type==="in"?IN_CATS:OUT_CATS},
+    {k:"acc",label:"از کدام کارت / حساب",type:"select",value:t.acc||preset.acc||S.accounts[0]?.id,options:accs},
+    {k:"date",label:"تاریخ",type:"jdate",value:t.date||jstr(todayJ())},
+    {k:"note",label:"توضیح",type:"text",value:t.note||preset.note||"",ph:"مثلاً خرید هفتگی"}];
+  fields.onMount=sh=>sh.querySelector(".seg").addEventListener("change",()=>{const v=sh.querySelector(".seg .on").dataset.v;const sel=sh.querySelector("#f_cat");sel.innerHTML=(v==="in"?IN_CATS:OUT_CATS).map(c=>`<option>${c}</option>`).join("")});
+  form(isNew?"ثبت دخل / خرج":"ویرایش",fields,o=>{if(!o.amount){toast("مبلغ را وارد کن");return false}
+    if(!S.accounts.length){toast("اول یک کارت یا حساب بساز");return false}
+    if(isNew)S.tx.unshift({id:uid(),...o,date:o.date||jstr(todayJ())});else Object.assign(t,o);toast(isNew?"ثبت شد":"ذخیره شد")});
+}
+function accForm(a={}){form(a.id?"ویرایش حساب":"کارت / حساب جدید",[
+  {k:"name",label:"نام",type:"text",value:a.name||"",ph:"مثلاً کارت ملت، حساب پس‌انداز"},
+  {k:"type",label:"نوع",type:"select",value:a.type||"card",options:[["card","کارت بانکی"],["bank","حساب بانکی"],["cash","نقدی"]]},
+  {k:"init",label:"موجودی فعلی ("+U()+")",type:"money",value:a.id?a.init:""}],
+  o=>{if(!o.name){toast("نام را بنویس");return false}if(a.id)Object.assign(a,o);else S.accounts.push({id:uid(),...o})},
+  `<p class="muted" style="margin:0">برای امنیت، شماره کارت را اینجا ننویس؛ فقط یک اسم کافی است.</p>`)}
+function instForm(it={}){form(it.id?"ویرایش قسط":"قسط جدید",[
+  {k:"title",label:"عنوان",type:"text",value:it.title||"",ph:"مثلاً وام، اقساط یخچال"},
+  {k:"amount",label:"مبلغ هر قسط ("+U()+")",type:"money",value:it.amount||""},
+  {k:"count",label:"تعداد اقساط",type:"int",value:it.count||12},
+  {k:"start",label:"تاریخ اولین قسط",type:"jdate",value:it.start||jstr(todayJ())},
+  {k:"acc",label:"پرداخت از",type:"select",value:it.acc||S.accounts[0]?.id,options:S.accounts.map(a=>[a.id,a.name])}],
+  o=>{if(!o.title||!o.amount||!o.count||!o.start){toast("همه خانه‌ها را پر کن");return false}if(it.id)Object.assign(it,o);else S.inst.push({id:uid(),paid:[],...o})})}
+function shopForm(x={}){form(x.id?"ویرایش":"افزودن به لیست خرید",[{k:"name",label:"چی بخریم؟",type:"text",value:x.name||""},{k:"qty",label:"مقدار",type:"text",value:x.qty||"",ph:"مثلاً ۲ کیلو"}],
+  o=>{if(!o.name)return false;if(x.id)Object.assign(x,o);else S.shop.unshift({id:uid(),done:false,...o})})}
+function fridgeForm(x={}){form(x.id?"ویرایش":"افزودن به موجودی",[{k:"name",label:"نام",type:"text",value:x.name||""},{k:"qty",label:"مقدار",type:"text",value:x.qty||""},
+  {k:"loc",label:"کجا",type:"select",value:x.loc||(fLoc!=="همه"?fLoc:"یخچال"),options:["یخچال","فریزر","کابینت"]},{k:"exp",label:"تاریخ انقضا (اختیاری)",type:"jdate",value:x.exp||""}],
+  o=>{if(!o.name)return false;if(x.id)Object.assign(x,o);else S.fridge.unshift({id:uid(),...o})})}
+function todoForm(x={}){form(x.id?"ویرایش کار":"کار جدید",[{k:"text",label:"کار",type:"text",value:x.text||""},{k:"due",label:"موعد (اختیاری)",type:"jdate",value:x.due||""}],
+  o=>{if(!o.text)return false;if(x.id)Object.assign(x,o);else S.todo.unshift({id:uid(),done:false,...o})})}
+function saveForm(x={}){form(x.id?"ویرایش هدف":"هدف پس‌انداز",[{k:"title",label:"برای چی؟",type:"text",value:x.title||"",ph:"مثلاً سفر، خرید ماشین"},{k:"target",label:"مبلغ هدف ("+U()+")",type:"money",value:x.target||""}],
+  o=>{if(!o.title||!o.target)return false;if(x.id)Object.assign(x,o);else S.save.push({id:uid(),saved:0,...o})})}
+function depositForm(g,dir=1){form(dir>0?`واریز به «${g.title}»`:`برداشت از «${g.title}»`,[{k:"amount",label:"مبلغ ("+U()+")",type:"money"},{k:"acc",label:dir>0?"از کدام حساب":"به کدام حساب",type:"select",value:S.accounts[0]?.id,options:S.accounts.map(a=>[a.id,a.name])}],
+  o=>{if(!o.amount)return false;const was=g.saved>=g.target;g.saved=Math.max(0,g.saved+dir*o.amount);if(!was&&g.saved>=g.target)setTimeout(party,300);
+    S.tx.unshift({id:uid(),type:dir>0?"out":"in",amount:o.amount,cat:dir>0?"پس‌انداز":"سایر درآمد",acc:o.acc,date:jstr(todayJ()),note:(dir>0?"پس‌انداز: ":"برداشت از پس‌انداز: ")+g.title});toast("ثبت شد")})}
+
+/* ---------- photo → list (Claude) ---------- */
+let photoMode="shop";
+function askPhoto(mode){photoMode=mode;$("#photo").value="";$("#photo").click()}
+$("#photo").addEventListener("change",async e=>{const file=e.target.files[0];if(!file||!SAMPLE)return;
+  const bg=sheet(`<h2 style="margin-top:0">در حال خواندن عکس…</h2><p class="muted">چند ثانیه صبر کن.</p>`);
+  try{
+    const prompt=photoMode==="shop"
+      ?`این عکس را برای یک اپ لیست خرید خانه بخوان. ممکن است یک لیست دست‌نویس، فاکتور فروشگاه، قفسه یا کالاهای خوراکی باشد. هر قلم کالا را با مقدارش (اگر معلوم است) به فارسی استخراج کن. فقط JSON بده به شکل {"items":[{"name":"...","qty":"..."}]}. اگر چیزی پیدا نشد items خالی باشد.`
+      :`این عکس داخل یخچال یا کابینت آشپزخانه است. مواد غذایی دیده‌شده را به فارسی با مقدار تقریبی لیست کن. فقط JSON بده به شکل {"items":[{"name":"...","qty":"..."}]}.`;
+    const r=await SAMPLE.json(prompt,{images:[file],modelTier:"default"});
+    const items=(r&&r.items||[]).filter(x=>x&&x.name);bg.remove();
+    if(!items.length){toast("چیزی در عکس پیدا نشد");return}
+    sheet(`<h2 style="margin-top:0">${fa(items.length)} قلم پیدا شد</h2><p class="muted" style="margin-top:0">تیک هرکدام را که نمی‌خواهی بردار.</p>
+      <div class="list">${items.map((x,i)=>`<label class="item"><input type="checkbox" checked data-i="${i}"><span class="t">${esc(x.name)} <span class="muted">${esc(x.qty||"")}</span></span></label>`).join("")}</div>
+      <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">افزودن به ${photoMode==="shop"?"لیست خرید":"موجودی"}</button><button class="btn ghost" id="no">انصراف</button></div>`,
+      (sh,close)=>{sh.querySelector("#no").onclick=close;sh.querySelector("#ok").onclick=()=>{
+        sh.querySelectorAll("input:checked").forEach(c=>{const x=items[c.dataset.i];
+          if(photoMode==="shop")S.shop.unshift({id:uid(),name:x.name,qty:x.qty||"",done:false});
+          else S.fridge.unshift({id:uid(),name:x.name,qty:x.qty||"",loc:"یخچال",exp:""})});
+        close();save();render();toast("اضافه شد")}});
+  }catch(err){bg.remove();toast(err&&err.code==="not_granted"?"اجازه استفاده از هوش مصنوعی داده نشد":"خواندن عکس نشد؛ دوباره امتحان کن")}
+});
+
+/* ---------- views ---------- */
+const ICONS={
+ home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+ money:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19M6 15h4"/></svg>',
+ shop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+ kitchen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 10h14M8 6v2M8 13v3"/></svg>',
+ more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'};
+const TABS=[["home","خانه"],["money","دخل و خرج"],["shop","خرید"],["kitchen","آشپزخانه"],["more","بیشتر"]];
+function renderTabs(){const cur=["inst","todo","save","report","accounts","settings","cards"].includes(route)?"more":route;
+  $("#tabs").innerHTML=TABS.map(([k,l])=>`<button class="navb ${cur===k?"on":""}" data-go="${k}" aria-label="${l}">${ICONS[k]}<span>${l}</span></button>`).join("")}
+
+const CAT_E={"سوپرمارکت":"🛒","میوه و سبزی":"🥦","گوشت و مرغ":"🍗","نان":"🍞","رستوران و بیرون‌بر":"🍕","قبض‌ها":"💡","اجاره":"🏠","بنزین و رفت‌وآمد":"⛽","درمان":"💊","پوشاک":"👗","تفریح":"🎡","اقساط":"📆","پس‌انداز":"🐷","سایر":"📦","حقوق":"💼","پاداش":"🎁","فروش":"🏷️","سایر درآمد":"💰"};
+const catE=c=>CAT_E[c]||"📦";
+const FOOD=[["تخم","🥚"],["مرغ","🍗"],["گوشت","🥩"],["ماهی","🐟"],["میگو","🦐"],["نان","🍞"],["برنج","🍚"],["سیب‌زمینی","🥔"],["پیاز","🧅"],["گوجه","🍅"],["سیر","🧄"],["هویج","🥕"],["بادمجان","🍆"],["فلفل","🫑"],["خیار","🥒"],["لیمو","🍋"],["سیب","🍎"],["موز","🍌"],["پرتقال","🍊"],["نارنگی","🍊"],["انگور","🍇"],["هندوانه","🍉"],["انار","🍎"],["توت","🍓"],["ماست","🥛"],["شیر","🥛"],["دوغ","🥛"],["کشک","🥛"],["پنیر","🧀"],["کره","🧈"],["عدس","🫘"],["لوبیا","🫘"],["نخود","🫘"],["لپه","🫘"],["ماکارونی","🍝"],["رشته","🍝"],["قارچ","🍄"],["سبزی","🌿"],["جعفری","🌿"],["کاهو","🥬"],["کلم","🥬"],["چای","☕"],["قهوه","☕"],["قند","🍬"],["شکر","🍬"],["شکلات","🍫"],["بیسکویت","🍪"],["کیک","🍰"],["روغن","🫗"],["نمک","🧂"],["زعفران","🌼"],["گردو","🌰"],["پسته","🥜"],["آب","💧"],["نوشابه","🥤"],["رب","🥫"],["تن","🥫"],["مایع","🧴"],["پودر","🧼"],["دستمال","🧻"],["شامپو","🧴"]];
+const foodE=n=>{const m=norm(n);for(const[k,e]of FOOD)if(m.includes(norm(k)))return e;return "🛍️"};
+const REC_E=[["ماکارونی","🍝"],["املت","🍳"],["کوکو","🥚"],["کتلت","🥚"],["کباب","🍢"],["ماهی","🐟"],["سوپ","🥣"],["آش","🥣"],["عدسی","🥣"],["الویه","🥗"],["مرغ","🍗"],["ته‌چین","🍗"],["بادمجان","🍆"],["میرزا","🍆"],["دلمه","🫑"],["پلو","🍚"]];
+const recE=n=>{for(const[k,e]of REC_E)if(n.includes(k))return e;return "🍲"};
+const PAL=["var(--brand)","var(--saffron)","var(--pom)","var(--sky)","var(--grape)","var(--muted)"];
+const TINT=["var(--t-green)","var(--t-saf)","var(--t-pom)","var(--t-sky)","var(--t-grape)"];
+const tintOf=s=>TINT[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0)%TINT.length];
+const bub=(e,key)=>`<span class="bub" style="background:${tintOf(key||e)}" aria-hidden="true">${e}</span>`;
+const compact=n=>{n*=F();return n>=1e9?fa(+(n/1e9).toFixed(1))+" میلیارد":n>=1e6?fa(+(n/1e6).toFixed(1))+" میلیون":fa(Math.round(n/1e3))+" هزار"};
+const empty=(e,t)=>`<div class="empty"><span class="ee">${e}</span>${t}</div>`;
+function donut(by,tot,label){
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);const top=rows.slice(0,5);const rest=rows.slice(5).reduce((s,r)=>s+r[1],0);if(rest)top.push(["بقیه",rest]);
+  let acc=0;const stops=top.map((r,i)=>{const a=acc/tot*360;acc+=r[1];return `${PAL[i%PAL.length]} ${a}deg ${acc/tot*360}deg`}).join(",");
+  return `<div class="donut-wrap"><div class="donut" style="background:conic-gradient(${stops||"var(--surface2) 0 360deg"})"><span>${label}<b>${compact(tot)}</b>${U()}</span></div>
+  <div class="legend">${top.map((r,i)=>`<div class="row between"><span><i style="background:${PAL[i%PAL.length]}"></i>${catE(r[0])} ${esc(r[0])}</span><b>${fa(Math.round(r[1]/tot*100))}٪</b></div>`).join("")}</div></div>`;
+}
+function party(){if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;const E=["🎉","✨","🌟","💚","🧡","🎊"];
+  for(let i=0;i<22;i++){const s=document.createElement("span");s.className="confetti";s.textContent=E[i%E.length];s.style.left=Math.random()*100+"vw";s.style.animationDelay=Math.random()*.5+"s";document.body.appendChild(s);setTimeout(()=>s.remove(),2400)}}
+
+function vHome(){
+  const ym=monthKey(jstr(todayJ())),M=monthTx(ym);
+  const inc=M.filter(t=>t.type==="in").reduce((s,t)=>s+t.amount,0),outs=M.filter(t=>t.type==="out"&&t.cat!=="پس‌انداز"),out=outs.reduce((s,t)=>s+t.amount,0);
+  const by={};outs.forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amount);
+  const total=S.accounts.reduce((s,a)=>s+balance(a),0);const A=alerts();
+  const saved=S.save.reduce((s,g)=>s+g.saved,0),target=S.save.reduce((s,g)=>s+g.target,0);
+  const ICO={inst:"📆",kitchen:"🥗",todo:"✅",shop:"🛒"};
+  return `${S.example?`<div class="banner row between" style="margin-bottom:12px"><span>✨ این‌ها داده‌های نمونه‌اند تا ببینی اپ چطور کار می‌کند.</span><button class="btn small" data-act="wipe" style="white-space:nowrap">شروع از صفر</button></div>`:""}
+  <div class="wallet" data-go="money" role="button" tabindex="0" style="cursor:pointer">
+    <div class="lab">💳 موجودی همه کارت‌ها و حساب‌ها</div><div class="big">${toman(total)}</div>
+    <div class="mini"><div><span class="lab">⬆ درآمد ${MONTHS[ym%100-1]}</span><b>${toman(inc)}</b></div><div><span class="lab">⬇ خرج ${MONTHS[ym%100-1]}</span><b>${toman(out)}</b></div></div>
+    ${inc?`<div class="meter"><i style="width:${Math.min(100,out/inc*100)}%;${out>inc?"background:var(--pom)":""}"></i></div><div class="note">${fa(Math.round(out/inc*100))}٪ از درآمد این ماه خرج شده ${out/inc<.7?"— آفرین 👏":out>inc?"— مراقب باش ⚠️":""}</div>`:""}
+  </div>
+  <h2><span class="e">🔔</span>یادآوری‌ها</h2>
+  <div class="stack">${A.length?A.map(a=>`<button class="alert ${a.bad?"bad":""}" data-go="${a.go}">${bub(ICO[a.go]||"🔔",a.go)}<span class="grow"><b>${esc(a.t)}</b><br><span class="muted">${esc(a.s)}</span></span><span class="muted">‹</span></button>`).join(""):`<div class="card">${empty("🌿","همه‌چیز مرتب است. یادآوری فوری نداری.")}</div>`}</div>
+  ${out?`<h2><span class="e">🍩</span>خرج ${MONTHS[ym%100-1]} کجا رفت؟</h2><button class="card" data-go="report" style="width:100%;border:0;font:inherit;color:inherit;text-align:right;cursor:pointer">${donut(by,out,"جمع خرج")}</button>`:""}
+  <h2><span class="e">⚡</span>میان‌بر</h2>
+  <div class="tiles">
+    <button class="tile c1" data-act="addtx"><span class="ti">✍️</span><b>ثبت دخل / خرج</b><span>کارت یا نقدی</span></button>
+    <button class="tile c2" data-act="photoShop"><span class="ti">📸</span><b>عکس ← لیست خرید</b><span>${SAMPLE&&IMG?"از لیست یا فاکتور عکس بگیر":"در این نمایش در دسترس نیست"}</span></button>
+    <button class="tile c4" data-go="cards"><span class="ti">💳</span><b>کیف کارت‌ها</b><span>شماره کارت و شبا</span></button>
+    <button class="tile c3" data-go="save"><span class="ti">🐷</span><b>پس‌انداز</b><span>${target?fa(Math.round(saved/target*100))+"٪ از هدف‌ها":"یک هدف بساز"}</span></button>
+    <button class="tile c5" data-go="report"><span class="ti">📊</span><b>گزارش این ماه</b><span>و پیشنهاد صرفه‌جویی</span></button>
+    <button class="tile c1" data-go="kitchen"><span class="ti">🍳</span><b>امروز چی بپزیم؟</b><span>با موجودی یخچال</span></button>
+  </div>`;
+}
+
+function vMoney(){
+  const total=S.accounts.reduce((s,a)=>s+balance(a),0);
+  const months=[...new Set(S.tx.map(t=>monthKey(t.date)).filter(Boolean))].sort((a,b)=>b-a);
+  const dkey=t=>{const a=jparse(t.date);return a?a[0]*10000+a[1]*100+a[2]:0};
+  const q=norm(hQ);
+  const list=S.tx.filter(t=>(txFilter==="all"||t.acc===txFilter)&&(!hM||monthKey(t.date)===hM)&&(hCat==="all"||t.cat===hCat)&&(hType==="all"||t.type===hType)
+    &&(!q||norm(t.note+t.cat+(accById(t.acc)?.name||"")).includes(q))).sort((a,b)=>dkey(b)-dkey(a));
+  const sIn=list.filter(t=>t.type==="in").reduce((s,t)=>s+t.amount,0),sOut=list.filter(t=>t.type==="out").reduce((s,t)=>s+t.amount,0);
+  const cats=[...new Set(S.tx.filter(t=>hType==="all"||t.type===hType).map(t=>t.cat))];
+  const groups=[];list.slice(0,300).forEach(t=>{const g=groups[groups.length-1];if(g&&g.d===t.date)g.items.push(t);else groups.push({d:t.date,items:[t]})});
+  const tj=jstr(todayJ()),yj=addDays(tj,-1);
+  const dayLabel=d=>{const a=jparse(d);if(!a)return "بدون تاریخ";const w=WDAYS[(jToDate(d).getDay()+1)%7];return (d===tj?"امروز — ":d===yj?"دیروز — ":"")+w+" "+jfa(d)};
+  return `<div class="wallet" style="margin-top:6px">
+    <div class="lab">💰 کل پولی که داری (جمع همه حساب‌ها)</div><div class="big">${toman(total)}</div>
+    <div class="mini" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">${S.accounts.map(a=>`<div><span class="lab">${a.type==="cash"?"💵":a.type==="bank"?"🏦":"💳"} ${esc(a.name)}</span><b>${toman(balance(a))}</b></div>`).join("")}</div>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="btn ghost grow" data-go="accounts">🏦 حساب‌ها</button><button class="btn ghost grow" data-go="cards">💳 کیف کارت‌ها</button></div>
+  <div class="row between"><h2><span class="e">🕘</span>تاریخچه خرج و درآمد</h2><button class="btn small" data-act="addtx">+ ثبت</button></div>
+  <div class="card stack" style="margin-bottom:12px">
+    <input type="text" id="hq" placeholder="🔍 جستجو: مثلاً نان، پیتزا، قبض…" value="${esc(hQ)}" autocomplete="off">
+    <div class="row"><select id="hm" aria-label="ماه" class="grow"><option value="0">همه ماه‌ها</option>${months.map(m=>`<option value="${m}" ${m===hM?"selected":""}>${MONTHS[m%100-1]} ${String(Math.floor(m/100)).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}</option>`).join("")}</select>
+      <select id="ha" aria-label="حساب" class="grow"><option value="all">همه حساب‌ها</option>${S.accounts.map(a=>`<option value="${a.id}" ${txFilter===a.id?"selected":""}>${esc(a.name)}</option>`).join("")}</select></div>
+    <div class="seg"><button class="${hType==="all"?"on":""}" data-ht="all">همه</button><button class="${hType==="out"?"on":""}" data-ht="out">⬇ خرج</button><button class="${hType==="in"?"on":""}" data-ht="in">⬆ درآمد</button></div>
+    <div class="chips"><button class="chip ${hCat==="all"?"on":""}" data-hc="all">همه دسته‌ها</button>${cats.map(c=>`<button class="chip ${hCat===c?"on":""}" data-hc="${esc(c)}">${catE(c)} ${esc(c)}</button>`).join("")}</div>
+    <div class="grid2"><div><span class="muted">جمع خرج</span><br><b class="out">${toman(sOut)}</b></div><div><span class="muted">جمع درآمد</span><br><b class="in">${toman(sIn)}</b></div></div>
+    <span class="muted">${fa(list.length)} مورد پیدا شد</span>
+  </div>
+  ${groups.length?groups.map(g=>{const dOut=g.items.filter(t=>t.type==="out").reduce((s,t)=>s+t.amount,0);
+    return `<div class="row between" style="margin:14px 4px 6px"><b style="font-size:13.5px">${dayLabel(g.d)}</b>${dOut?`<span class="muted">خرج: ${toman(dOut)}</span>`:""}</div>
+    <div class="card list">${g.items.map(t=>`<div class="item">${bub(catE(t.cat),t.cat)}<div class="t"><b>${esc(t.note||t.cat)}</b><br><span class="muted">${esc(t.cat)} · ${t.type==="in"?"به":"از"} ${esc(accById(t.acc)?.name||"—")}</span></div><b class="${t.type==="in"?"in":"out"}" style="white-space:nowrap">${t.type==="in"?"+":"−"}${toman(t.amount)}</b>
+      <span class="row" style="flex-direction:column;gap:0"><button class="icon" data-edit="tx:${t.id}">ویرایش</button><button class="icon" data-del="tx:${t.id}">حذف</button></span></div>`).join("")}</div>`}).join("")
+  :`<div class="card">${empty("🧾",S.tx.length?"با این فیلترها چیزی پیدا نشد.":"هنوز چیزی ثبت نشده. با دکمه زرد + اولین خرج یا درآمد را وارد کن.")}</div>`}`;
+}
+
+function vShop(){
+  const open=S.shop.filter(x=>!x.done),done=S.shop.filter(x=>x.done);
+  const row=x=>`<div class="item ${x.done?"done":""}"><input type="checkbox" data-shopt="${x.id}" ${x.done?"checked":""} aria-label="خریده شد">${bub(foodE(x.name),x.name)}<span class="t"><b>${esc(x.name)}</b> <span class="muted">${esc(x.qty||"")}</span></span><button class="icon" data-edit="shop:${x.id}">ویرایش</button><button class="icon" data-del="shop:${x.id}">حذف</button></div>`;
+  return `<div class="row between"><h2><span class="e">🛒</span>لیست خرید</h2><span class="pill ${open.length?"warn":"ok"}">${open.length?fa(open.length)+" مانده":"کامل شد"}</span></div>
+  <div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="addshop">+ افزودن</button>${SAMPLE&&IMG?`<button class="btn saf grow" data-act="photoShop">📸 عکس بگیر</button>`:""}</div>
+  ${SAMPLE&&IMG?`<p class="muted" style="margin-top:0">از لیست دست‌نویس، فاکتور یا خود کالا عکس بگیر؛ اقلام خودکار به لیست اضافه می‌شوند.</p>`:""}
+  <div class="card list">${open.length?open.map(row).join(""):empty(done.length?"🎉":"🧺",done.length?"همه را خریدی!":"لیست خالی است.")}</div>
+  ${done.length?`<h2><span class="e">✅</span>خریده شد</h2><div class="card list">${done.map(row).join("")}</div>
+  <div class="stack" style="margin-top:12px"><button class="btn" data-act="toFridge">🧊 انتقال خریده‌ها به یخچال و کابینت</button><button class="btn ghost" data-act="shopExpense">🧾 ثبت هزینه این خرید</button></div>`:""}`;
+}
+
+function vKitchen(){
+  const tab=`<h2><span class="e">🍳</span>آشپزخانه</h2><div class="seg" style="margin-bottom:12px"><button class="${kTab==="fridge"?"on":""}" data-kt="fridge">🧊 موجودی</button><button class="${kTab==="meals"?"on":""}" data-kt="meals">🍲 چی بپزم؟</button><button class="${kTab==="plan"?"on":""}" data-kt="plan">📅 هفته</button></div>`;
+  if(kTab==="fridge"){
+    const items=S.fridge.filter(f=>fLoc==="همه"||f.loc===fLoc);const LE={"همه":"🏠","یخچال":"🧊","فریزر":"❄️","کابینت":"🗄️"};
+    return tab+`<div class="chips">${["همه","یخچال","فریزر","کابینت"].map(l=>`<button class="chip ${fLoc===l?"on":""}" data-loc="${l}">${LE[l]} ${l}</button>`).join("")}</div>
+    <div class="row" style="margin:12px 0"><button class="btn grow" data-act="addfridge">+ افزودن</button>${SAMPLE&&IMG?`<button class="btn saf grow" data-act="photoFridge">📸 عکس از یخچال</button>`:""}</div>
+    <div class="card list">${items.length?items.map(f=>{const d=f.exp?daysUntil(f.exp):null;
+      return `<div class="item">${bub(foodE(f.name),f.name)}<div class="t"><b>${esc(f.name)}</b> <span class="muted">${esc(f.qty||"")}</span><br><span class="pill">${LE[f.loc]||""} ${esc(f.loc)}</span> ${d!==null?`<span class="pill ${d<0?"bad":d<=2?"warn":"ok"}">${d<0?"تاریخ گذشته":d===0?"امروز":fa(d)+" روز مانده"}</span>`:""}</div>
+      <button class="icon" data-finish="${f.id}">تمام شد</button><button class="icon" data-edit="fridge:${f.id}">ویرایش</button><button class="icon" data-del="fridge:${f.id}">حذف</button></div>`}).join(""):empty("🧊","چیزی ثبت نشده. مواد یخچال، فریزر و کابینت را اضافه کن تا پیشنهاد غذا بگیری.")}</div>
+    <p class="muted">«تمام شد» آن قلم را از موجودی برمی‌دارد و به لیست خرید اضافه می‌کند.</p>`;
+  }
+  if(kTab==="meals"){
+    const R=scoreRecipes();
+    return tab+`<p class="muted" style="margin-top:0">بر اساس موجودی آشپزخانه؛ هرچه مواد بیشتری داشته باشی، بالاتر است.</p>
+    ${SAMPLE?`<div class="card stack" style="margin-bottom:12px;background:var(--t-saf)"><b>✨ پیشنهاد هوشمند</b><div class="ai muted" id="aiMeal">با موجودی فعلی، چند غذای اقتصادی و ساده پیشنهاد می‌دهد.</div><button class="btn small saf" data-act="aiMeal" style="align-self:flex-start">پیشنهاد بده</button></div>`:""}
+    <div class="stack">${R.map(r=>`<div class="card recipe"><span class="bub">${recE(r.n)}</span><div class="grow"><div class="row between"><b>${esc(r.n)}</b><span class="pill ${r.miss.length===0?"ok":r.score>=.6?"warn":""}">${r.miss.length===0?"همه مواد را داری ✓":fa(r.i.length-r.miss.length)+" از "+fa(r.i.length)}</span></div>
+      <div class="muted">${r.i.map(x=>r.miss.includes(x)?`<span class="out">${esc(x)}</span>`:esc(x)).join("، ")}</div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap">${r.miss.length?`<button class="btn small ghost" data-miss="${esc(r.n)}">🛒 کمبودها به لیست خرید</button>`:""}<button class="btn small ghost" data-plan-pick="${esc(r.n)}">📅 به برنامه هفته</button></div></div></div>`).join("")}</div>`;
+  }
+  const wi=weekIdx();
+  return tab+`<p class="muted" style="margin-top:0">روی هر خانه بزن تا غذا انتخاب کنی.</p>
+  <div class="week"><div class="day muted"><span></span><span>☀️ ناهار</span><span>🌙 شام</span></div>
+  ${WDAYS.map((w,i)=>{const p=S.plan[i]||{};return `<div class="day"><span class="dn ${i===wi?"now":""}">${w}</span><button class="slot ${p.l?"f":""}" data-slot="${i}:l">${p.l?recE(p.l)+" "+esc(p.l):"+"}</button><button class="slot ${p.d?"f":""}" data-slot="${i}:d">${p.d?recE(p.d)+" "+esc(p.d):"+"}</button></div>`}).join("")}</div>
+  <div class="stack" style="margin-top:14px"><button class="btn" data-act="weekShop">🛒 مواد لازم هفته به لیست خرید</button><div class="row"><button class="btn ghost grow" data-act="planAuto">🪄 چیدن خودکار</button><button class="btn ghost grow" data-act="planClear">پاک کردن</button></div></div>`;
+}
+
+function vMore(){return `<h2><span class="e">🧩</span>بیشتر</h2><div class="tiles">
+  <button class="tile c4" data-go="cards"><span class="ti">💳</span><b>کیف کارت‌ها</b><span>${VAULT?fa(VAULT.length)+" کارت":"قفل"}</span></button>
+  <button class="tile c2" data-go="inst"><span class="ti">📆</span><b>اقساط</b><span>${fa(S.inst.length)} مورد</span></button>
+  <button class="tile c1" data-go="todo"><span class="ti">✅</span><b>لیست کارها</b><span>${fa(S.todo.filter(t=>!t.done).length)} کار باز</span></button>
+  <button class="tile c3" data-go="save"><span class="ti">🐷</span><b>پس‌انداز</b><span>${fa(S.save.length)} هدف</span></button>
+  <button class="tile c5" data-go="report"><span class="ti">📊</span><b>گزارش ماهانه</b><span>و پیشنهاد اقتصادی</span></button>
+  <button class="tile c1" data-go="accounts"><span class="ti">🏦</span><b>حساب‌ها</b><span>${fa(S.accounts.length)} حساب</span></button>
+  <button class="tile c2" data-go="settings"><span class="ti">⚙️</span><b>تنظیمات</b><span>رمز، پین، واحد پول</span></button>
+  <button class="tile c3" data-act="lock"><span class="ti">🔒</span><b>قفل کن</b><span>خروج تا ورود بعدی</span></button></div>`}
+const backBtn=`<button class="btn small ghost back" data-go="more">→ بازگشت</button>`;
+
+function vInst(){
+  const totalLeft=S.inst.reduce((s,it)=>s+(it.count-it.paid.length)*it.amount,0);
+  return backBtn+`<div class="row between"><h2>اقساط</h2><button class="btn small" data-act="addinst">+ قسط</button></div>
+  ${S.inst.length?`<div class="card row between" style="margin-bottom:10px"><span class="muted">مانده همه اقساط</span><b class="out">${toman(totalLeft)}</b></div>`:""}
+  <div class="stack">${S.inst.length?S.inst.map(it=>{const n=instNext(it),d=n>=0?daysUntil(instDue(it,n)):null;
+    return `<div class="card stack"><div class="row between"><b>${esc(it.title)}</b><span class="pill ${n<0?"ok":d<0?"bad":d<=5?"warn":""}">${n<0?"تسویه شد":d<0?"عقب افتاده":"قسط بعد: "+jfa(instDue(it,n))}</span></div>
+    <div class="muted">${toman(it.amount)} × ${fa(it.count)} — ${fa(it.paid.length)} قسط پرداخت شده، مانده ${toman((it.count-it.paid.length)*it.amount)}</div>
+    <div class="bar"><i style="width:${it.paid.length/it.count*100}%"></i></div>
+    <div class="row">${n>=0?`<button class="btn small" data-pay="${it.id}">پرداخت قسط ${fa(n+1)}</button>`:""}<button class="icon" data-edit="inst:${it.id}">ویرایش</button><button class="icon" data-del="inst:${it.id}">حذف</button></div>
+    <p class="muted" style="margin:0">پرداخت قسط، خودش یک خرج با دسته «اقساط» از حساب ${esc(accById(it.acc)?.name||"")} ثبت می‌کند.</p></div>`}).join(""):`<div class="card muted">قسطی ثبت نشده.</div>`}</div>`;
+}
+function vTodo(){
+  const o=S.todo.filter(t=>!t.done),d=S.todo.filter(t=>t.done);
+  const row=t=>{const dd=t.due?daysUntil(t.due):null;return `<div class="item ${t.done?"done":""}"><input type="checkbox" data-todot="${t.id}" ${t.done?"checked":""} aria-label="انجام شد"><span class="t">${esc(t.text)} ${t.due&&!t.done?`<span class="pill ${dd<0?"bad":dd===0?"warn":""}">${dd<0?"عقب افتاده":dd===0?"امروز":jfa(t.due)}</span>`:""}</span><button class="icon" data-edit="todo:${t.id}">ویرایش</button><button class="icon" data-del="todo:${t.id}">حذف</button></div>`};
+  return backBtn+`<div class="row between"><h2>لیست کارها</h2><button class="btn small" data-act="addtodo">+ کار</button></div>
+  <div class="card list">${o.length?o.map(row).join(""):`<p class="muted">کار بازی نداری.</p>`}</div>${d.length?`<h2>انجام شده</h2><div class="card list">${d.map(row).join("")}</div>`:""}`;
+}
+function vSave(){return (route==="save"?backBtn:"")+`<div class="row between"><h2>پس‌انداز</h2><button class="btn small" data-act="addsave">+ هدف</button></div>
+  <div class="stack">${S.save.length?S.save.map(g=>`<div class="card stack"><div class="row between"><b>${esc(g.title)}</b><span class="pill ${g.saved>=g.target?"ok":""}">${fa(Math.round(g.saved/g.target*100))}٪</span></div>
+  <div class="bar"><i style="width:${Math.min(100,g.saved/g.target*100)}%;background:var(--saffron)"></i></div>
+  <div class="muted">${toman(g.saved)} از ${toman(g.target)} — ${g.saved>=g.target?"به هدف رسیدی!":"مانده "+toman(g.target-g.saved)}</div>
+  <div class="row"><button class="btn small" data-dep="${g.id}">واریز</button><button class="btn small ghost" data-wd="${g.id}">برداشت</button><button class="icon" data-edit="save:${g.id}">ویرایش</button><button class="icon" data-del="save:${g.id}">حذف</button></div></div>`).join(""):`<div class="card muted">یک هدف بساز؛ مثلاً «سفر عید» یا «پول پیش». هر واریز از حساب انتخابی کم می‌شود.</div>`}</div>`}
+function vAccounts(){return backBtn+`<div class="row between"><h2>کارت‌ها و حساب‌ها</h2><button class="btn small" data-act="addacc">+ حساب</button></div>
+  <div class="card list">${S.accounts.map(a=>{const ins=S.tx.filter(t=>t.acc===a.id&&t.type==="in").reduce((s,t)=>s+t.amount,0),outs=S.tx.filter(t=>t.acc===a.id&&t.type==="out").reduce((s,t)=>s+t.amount,0);
+  return `<div class="item"><div class="t"><b>${esc(a.name)}</b><br><span class="muted">موجودی ${toman(balance(a))} · <span class="in">واریز ${toman(ins)}</span> · <span class="out">برداشت ${toman(outs)}</span></span></div><button class="icon" data-edit="accounts:${a.id}">ویرایش</button><button class="icon" data-del="accounts:${a.id}">حذف</button></div>`}).join("")||`<p class="muted">حسابی نداری.</p>`}</div>`}
+
+function tips(ym){
+  const M=monthTx(ym),P=monthTx(ym%100===1?(Math.floor(ym/100)-1)*100+12:ym-1);
+  const out=M.filter(t=>t.type==="out"&&t.cat!=="پس‌انداز"),inc=M.filter(t=>t.type==="in").reduce((s,t)=>s+t.amount,0);
+  const tot=out.reduce((s,t)=>s+t.amount,0);const by={};out.forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amount);
+  const pby={};P.filter(t=>t.type==="out").forEach(t=>pby[t.cat]=(pby[t.cat]||0)+t.amount);
+  const T=[];const top=Object.entries(by).sort((a,b)=>b[1]-a[1])[0];
+  if(top&&tot&&top[1]/tot>.35)T.push(`«${top[0]}» ${fa(Math.round(top[1]/tot*100))}٪ کل خرج این ماه است. برای این دسته یک سقف ماهانه بگذار.`);
+  if(by["رستوران و بیرون‌بر"]&&by["رستوران و بیرون‌بر"]>tot*.12)T.push(`بیرون‌بر ${toman(by["رستوران و بیرون‌بر"])} شد. اگر نصفش را با برنامه هفتگی آشپزی در خانه جایگزین کنی، حدود ${toman(by["رستوران و بیرون‌بر"]/2)} صرفه‌جویی می‌شود.`);
+  Object.entries(by).forEach(([c,v])=>{if(pby[c]&&v>pby[c]*1.25&&v-pby[c]>300000)T.push(`خرج «${c}» نسبت به ماه قبل ${fa(Math.round((v/pby[c]-1)*100))}٪ بیشتر شده.`)});
+  const instM=S.inst.reduce((s,it)=>s+(instNext(it)>=0?it.amount:0),0);
+  if(inc&&instM/inc>.35)T.push(`اقساط ماهانه ${fa(Math.round(instM/inc*100))}٪ درآمد است. تا تسویه بعضی‌ها، قسط جدید برندار.`);
+  const sv=M.filter(t=>t.cat==="پس‌انداز").reduce((s,t)=>s+t.amount,0);
+  if(inc&&sv<inc*.1)T.push(`این ماه ${fa(Math.round(sv/inc*100))}٪ درآمد پس‌انداز شده. هدف خوب: اول ماه ۱۰٪ حقوق را جدا کنی (${toman(inc*.1)}).`);
+  const exp=S.fridge.filter(f=>f.exp&&daysUntil(f.exp)<0).length;if(exp)T.push(`${fa(exp)} قلم در آشپزخانه تاریخ‌گذشته است. قبل از خرید، موجودی را چک کن تا مواد هدر نرود.`);
+  if(!T.length&&tot)T.push("خرج این ماه متعادل است. همین روند را ادامه بده.");
+  return {by,tot,inc,T};
+}
+function vReport(){
+  const ym=repM||monthKey(jstr(todayJ()));const {by,tot,inc,T}=tips(ym);
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);const max=rows[0]?.[1]||1;
+  const biggest=monthTx(ym).filter(t=>t.type==="out"&&t.cat!=="پس‌انداز").sort((a,b)=>b.amount-a.amount).slice(0,5);
+  const prev=ym%100===1?(Math.floor(ym/100)-1)*100+12:ym-1,next=ym%100===12?(Math.floor(ym/100)+1)*100+1:ym+1;
+  return backBtn+`<div class="row between" style="margin-top:6px"><button class="btn small ghost" data-rep="${prev}">ماه قبل</button><h2 style="margin:0">گزارش ${MONTHS[ym%100-1]} ${String(Math.floor(ym/100)).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}</h2><button class="btn small ghost" data-rep="${next}">ماه بعد</button></div>
+  <div class="grid2" style="margin:12px 0"><div class="card"><div class="muted">درآمد</div><b class="in">${toman(inc)}</b></div><div class="card"><div class="muted">خرج</div><b class="out">${toman(tot)}</b></div></div>
+  <h2><span class="e">🍩</span>بیشتر کجا خرج کردیم؟</h2>
+  ${tot?`<div class="card" style="margin-bottom:10px">${donut(by,tot,"جمع خرج")}</div>`:""}
+  <div class="card stack">${rows.length?rows.map(([c,v])=>`<div><div class="row between"><span>${catE(c)} ${esc(c)}</span><span class="muted">${toman(v)} · ${fa(Math.round(v/tot*100))}٪</span></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div>`).join(""):`<p class="muted">برای این ماه خرجی ثبت نشده.</p>`}</div>
+  ${biggest.length?`<h2>بزرگ‌ترین خرج‌ها</h2><div class="card list">${biggest.map(t=>`<div class="item"><span class="t">${esc(t.note||t.cat)} <span class="muted">${jfa(t.date)}</span></span><b class="out">${toman(t.amount)}</b></div>`).join("")}</div>`:""}
+  <h2>پیشنهاد اقتصادی</h2>
+  <div class="stack">${T.map(t=>`<div class="alert"><span class="dot"></span><span>${esc(t)}</span></div>`).join("")}</div>
+  ${SAMPLE?`<div class="card stack" style="margin-top:10px"><b>مشاوره هوشمند این ماه</b><div class="ai muted" id="aiTip">تحلیل خرج‌ها و چند پیشنهاد عملی برای کم کردن هزینه‌ها.</div><button class="btn small saf" data-act="aiTip" data-ym="${ym}" style="align-self:flex-start">تحلیل کن</button></div>`:""}`;
+}
+function vSettings(){
+  let perm="unsupported";try{perm=("Notification" in window)?Notification.permission:"unsupported"}catch(e){}
+  return backBtn+`<h2>تنظیمات</h2><div class="stack">
+  <div class="card stack"><div class="field"><label for="setName">اسمت (برای سلام اول صفحه)</label><input type="text" id="setName" value="${esc(S.name)}"></div><button class="btn small" data-act="setName" style="align-self:flex-start">ذخیره</button></div>
+  <div class="card stack"><b>🔐 امنیت</b><span class="muted">نام کاربری: ${esc(S.auth?.user||"")} · ${getRem()?"ورود سریع با پین روی این گوشی فعال است":"ورود با رمز"}</span>
+  <div class="row" style="flex-wrap:wrap"><button class="btn small ghost" data-act="chpass">تغییر رمز</button><button class="btn small ghost" data-act="setpin">${getRem()?"تغییر پین":"ساختن پین"}</button>${getRem()?`<button class="btn small ghost" data-act="delpin">حذف پین</button>`:""}<button class="btn small ghost" data-act="lock">🔒 قفل کن</button></div></div>
+  <div class="card stack"><b>واحد پول</b><div class="seg"><button class="${RIAL()?"":"on"}" data-unit="toman">تومان</button><button class="${RIAL()?"on":""}" data-unit="rial">ریال</button></div><span class="muted">همه مبلغ‌ها و ورود عدد با همین واحد است. با دکمه بالای صفحه هم عوض می‌شود.</span></div>
+  <div class="card stack"><b>اعلان روی گوشی</b><span class="muted">${perm==="granted"?"اعلان فعال است؛ هر بار که اپ را باز می‌کنی خلاصه یادآوری‌ها می‌آید.":perm==="denied"||perm==="unsupported"?"این نمایشگر اجازه اعلان سیستمی نمی‌دهد؛ یادآوری‌ها در صفحه خانه نشان داده می‌شوند.":"اجازه بده تا سلام و یادآوری‌ها به‌صورت اعلان بیاید."}</span>${perm==="default"?`<button class="btn small" data-act="notif" style="align-self:flex-start">فعال کردن اعلان</button>`:""}</div>
+  <div class="card stack"><b>پشتیبان</b><span class="muted">اطلاعات روی حساب Claude تو ذخیره می‌شود و روی هر گوشی که با همین حساب باز کنی می‌آید.</span>
+  <div class="row"><button class="btn small ghost" data-act="export">کپی پشتیبان</button><button class="btn small ghost" data-act="import">بازگردانی از متن</button></div></div>
+  <div class="card stack"><b>پاک کردن همه اطلاعات</b><button class="btn small ghost" data-act="wipeAsk" style="align-self:flex-start;color:var(--out)">پاک کردن همه</button></div></div>`;
+}
+
+/* ---------- lock, password, PIN & encrypted card wallet ---------- */
+const te=new TextEncoder(),td=new TextDecoder();
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+async function pbk(pass,salt){return crypto.subtle.importKey("raw",te.encode(pass),"PBKDF2",false,["deriveKey","deriveBits"]).then(k=>({k,salt}))}
+async function aesKey(pass,salt){const {k}=await pbk(pass,salt);return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:150000,hash:"SHA-256"},k,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
+async function passHash(pass,salt){const {k}=await pbk(pass,salt);return b64(await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:150000,hash:"SHA-256"},k,256))}
+async function seal(key,obj){const iv=rnd(12);const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,te.encode(JSON.stringify(obj)));return {iv:b64(iv),ct:b64(ct)}}
+async function unseal(key,box){const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(box.iv)},key,ub64(box.ct));return JSON.parse(td.decode(pt))}
+const REM="home-budget-remember";
+let VKEY=null,VAULT=null,VBOX=null,vaultRef=null,UNLOCKED=false,showSecret={};
+let readyRes;const READY=new Promise(r=>{readyRes=r;setTimeout(r,4000)});
+try{const v=localStorage.getItem(KEY+"-vault");if(v)VBOX=JSON.parse(v)}catch(e){}
+function saveVault(){if(!VKEY||!VAULT)return;seal(VKEY,VAULT).then(box=>{VBOX=box;try{localStorage.setItem(KEY+"-vault",JSON.stringify(box))}catch(e){}
+  if(vaultRef)vaultRef.set({box:JSON.stringify(box),at:Date.now()}).catch(()=>toast("ذخیره کارت‌ها روی سرور نشد؛ عکس کوچک‌تر بگیر"))})}
+async function openVault(pass){VKEY=await aesKey(pass,ub64(S.auth.vsalt));VAULT=VBOX?await unseal(VKEY,VBOX):[];}
+async function doUnlock(pass){await openVault(pass);UNLOCKED=true;$("#lock").hidden=true;render()}
+function getRem(){try{return JSON.parse(localStorage.getItem(REM)||"null")}catch(e){return null}}
+async function setRem(pass,pin){const salt=rnd(16);const key=await aesKey(pin,salt);const box=await seal(key,{p:pass});try{localStorage.setItem(REM,JSON.stringify({salt:b64(salt),...box,fails:0}))}catch(e){}}
+function lockNow(){UNLOCKED=false;VKEY=null;VAULT=null;showSecret={};renderLock()}
+const eye=`<button type="button" class="eye" aria-label="نمایش رمز" data-eye>👁️</button>`;
+function pwField(id,label,ph=""){return `<div class="field"><label for="${id}">${label}</label><div class="pw"><input type="password" id="${id}" autocomplete="off" placeholder="${ph}">${eye}</div></div>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-eye]");if(!b)return;const i=b.parentNode.querySelector("input");i.type=i.type==="password"?"text":"password";b.textContent=i.type==="password"?"👁️":"🙈"});
+
+async function renderLock(){
+  const L=$("#lock");L.hidden=false;L.innerHTML=`<div class="lockbox"><div class="logo">🏡</div><p class="muted">در حال آماده‌سازی…</p></div>`;
+  await READY;
+  const rem=getRem();
+  if(!S.auth){ // first-time setup
+    L.innerHTML=`<form class="lockbox stack" id="setup"><div class="logo">🏡</div><h2 style="justify-content:center;margin:0">خوش آمدی!</h2>
+      <p class="muted" style="margin:0;text-align:center">برای امنیت، یک نام کاربری و رمز بساز.</p>
+      <div class="field"><label for="su">نام کاربری</label><input type="text" id="su" autocomplete="off" value=""></div>
+      ${pwField("sp","رمز (حداقل ۶ حرف)")}${pwField("sp2","تکرار رمز")}
+      <div class="field"><label for="spin">پین ۴ رقمی برای ورود سریع</label><input type="password" id="spin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+      <label class="row"><input type="checkbox" id="srem" checked> <span>مرا به خاطر بسپار (دفعه بعد فقط پین)</span></label>
+      <p class="err" id="serr"></p><button class="btn" type="submit">ساختن و ورود</button></form>`;
+    $("#setup").onsubmit=async e=>{e.preventDefault();const u=$("#su").value.trim(),p=$("#sp").value,p2=$("#sp2").value,pin=enDigits($("#spin").value);
+      const er=m=>$("#serr").textContent=m;
+      if(!u)return er("نام کاربری را بنویس");if(p.length<6)return er("رمز باید حداقل ۶ حرف باشد");if(p!==p2)return er("تکرار رمز یکی نیست");
+      if($("#srem").checked&&!/^\d{4}$/.test(pin))return er("پین باید ۴ رقم باشد");
+      er("");const hs=rnd(16),vs=rnd(16);S.auth={user:u,hsalt:b64(hs),hash:await passHash(p,hs),vsalt:b64(vs)};VBOX=null;save();
+      if($("#srem").checked)await setRem(p,pin);await doUnlock(p);saveVault();toast("ورود موفق 🎉")};
+    return;
+  }
+  if(rem){ // PIN pad
+    let pin="";
+    L.innerHTML=`<div class="lockbox stack"><div class="logo">🔐</div><h2 style="justify-content:center;margin:0">${esc(S.name||S.auth.user)}، ${greeting()}</h2><p class="muted" style="text-align:center;margin:0">پین را وارد کن</p>
+      <div class="dots" id="dots">${"<i></i>".repeat(4)}</div><p class="err" id="perr"></p>
+      <div class="pad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k=>k===""?"<span></span>":`<button type="button" data-k="${k}">${typeof k==="number"?fa(k):k}</button>`).join("")}</div>
+      <button class="btn ghost small" id="usePw" style="align-self:center">ورود با نام کاربری و رمز</button></div>`;
+    const dots=()=>$("#dots").querySelectorAll("i").forEach((d,i)=>d.classList.toggle("on",i<pin.length));
+    $("#usePw").onclick=()=>{try{localStorage.removeItem(REM)}catch(e){}renderLock()};
+    L.querySelector(".pad").onclick=async e=>{const b=e.target.closest("[data-k]");if(!b)return;const k=b.dataset.k;
+      if(k==="⌫"){pin=pin.slice(0,-1);dots();return}if(pin.length>=4)return;pin+=k;dots();
+      if(pin.length===4){try{const r=getRem();const key=await aesKey(pin,ub64(r.salt));const {p}=await unseal(key,r);r.fails=0;localStorage.setItem(REM,JSON.stringify(r));await doUnlock(p)}
+        catch(err){const r=getRem()||{};r.fails=(r.fails||0)+1;pin="";dots();$("#dots").classList.add("shake");setTimeout(()=>$("#dots")?.classList.remove("shake"),400);
+          if(r.fails>=5){try{localStorage.removeItem(REM)}catch(e){}toast("۵ بار اشتباه؛ با رمز وارد شو");renderLock()}else{try{localStorage.setItem(REM,JSON.stringify(r))}catch(e){}$("#perr").textContent=`پین اشتباه است (${fa(5-r.fails)} فرصت دیگر)`}}}};
+    return;
+  }
+  L.innerHTML=`<form class="lockbox stack" id="login"><div class="logo">🏡</div><h2 style="justify-content:center;margin:0">${greeting()}!</h2>
+    <div class="field"><label for="lu">نام کاربری</label><input type="text" id="lu" autocomplete="off" value="${esc(S.auth.user)}"></div>
+    ${pwField("lp","رمز")}
+    <label class="row"><input type="checkbox" id="lrem"> <span>مرا به خاطر بسپار</span></label>
+    <div class="field" id="lpinf" hidden><label for="lpin">یک پین ۴ رقمی برای ورود سریع بساز</label><input type="password" id="lpin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+    <p class="err" id="lerr"></p><button class="btn" type="submit">ورود</button>
+    <button type="button" class="btn ghost small" id="forgot" style="align-self:center">رمز را فراموش کردم</button></form>`;
+  $("#lrem").onchange=()=>$("#lpinf").hidden=!$("#lrem").checked;
+  $("#forgot").onclick=()=>sheet(`<h2 style="margin-top:0">بازنشانی رمز</h2><p class="muted">دخل و خرج، لیست‌ها و بقیه اطلاعات می‌مانند، ولی <b>کیف کارت‌ها پاک می‌شود</b> چون فقط با رمز قبلی باز می‌شود.</p><div class="row"><button class="btn grow" id="y" style="background:var(--out);color:#fff">بازنشانی</button><button class="btn ghost grow" id="n">انصراف</button></div>`,(sh,close)=>{sh.querySelector("#n").onclick=close;sh.querySelector("#y").onclick=()=>{S.auth=null;VBOX=null;try{localStorage.removeItem(KEY+"-vault");localStorage.removeItem(REM)}catch(e){}if(vaultRef)vaultRef.delete().catch(()=>{});save();close();renderLock()}});
+  $("#login").onsubmit=async e=>{e.preventDefault();const er=m=>$("#lerr").textContent=m;
+    if($("#lu").value.trim()!==S.auth.user)return er("نام کاربری یا رمز اشتباه است");
+    const p=$("#lp").value;if(await passHash(p,ub64(S.auth.hsalt))!==S.auth.hash)return er("نام کاربری یا رمز اشتباه است");
+    if($("#lrem").checked){const pin=enDigits($("#lpin").value);if(!/^\d{4}$/.test(pin))return er("پین باید ۴ رقم باشد");await setRem(p,pin)}
+    try{await doUnlock(p)}catch(err){er("کیف کارت‌ها باز نشد")}};
+}
+
+/* ---------- card wallet ---------- */
+const BINS={"603799":"ملی","589210":"سپه","627648":"توسعه صادرات","207177":"توسعه صادرات","627961":"صنعت و معدن","603770":"کشاورزی","639217":"کشاورزی","628023":"مسکن","627760":"پست بانک","502908":"توسعه تعاون","627412":"اقتصاد نوین","622106":"پارسیان","639194":"پارسیان","627884":"پارسیان","502229":"پاسارگاد","639347":"پاسارگاد","627488":"کارآفرین","502910":"کارآفرین","621986":"سامان","639346":"سینا","639607":"سرمایه","636214":"آینده","502806":"شهر","504706":"شهر","502938":"دی","603769":"صادرات","610433":"ملت","991975":"ملت","627353":"تجارت","585983":"تجارت","589463":"رفاه","505785":"ایران زمین","636795":"مرکزی","504172":"رسالت","606373":"مهر ایران","505416":"گردشگری","507677":"نور","628157":"توسعه","505801":"کوثر","639370":"مهر اقتصاد","606256":"ملل"};
+const BANK_C={"ملی":["#1e4c8f","#0f2c5c"],"ملت":["#c8102e","#7a0a1c"],"صادرات":["#1a3b8b","#0b1f52"],"تجارت":["#2457a7","#123166"],"سپه":["#e0a100","#8a5b00"],"کشاورزی":["#2e8b3e","#14501f"],"مسکن":["#e06b00","#8a3d00"],"پاسارگاد":["#d4a017","#5a4108"],"سامان":["#2b8fd1","#14527d"],"پارسیان":["#8b1d3b","#4d0f21"],"رفاه":["#1f6fb8","#0f3d69"],"آینده":["#5b2c83","#33174a"],"شهر":["#c62828","#6d1515"]};
+const bankOf=n=>BINS[String(n||"").slice(0,6)]||"";
+function luhn(n){let s=0;for(let i=0;i<n.length;i++){let d=+n[n.length-1-i];if(i%2){d*=2;if(d>9)d-=9}s+=d}return s%10===0}
+const grp=n=>String(n||"").replace(/\D/g,"").replace(/(\d{4})(?=\d)/g,"$1 ");
+const maskCard=n=>n?"•••• •••• •••• "+n.slice(-4):"—";
+async function copy(t){try{await navigator.clipboard.writeText(t);toast("کپی شد ✓")}catch(e){toast("کپی نشد؛ متن را نگه دار و کپی کن")}}
+function cardVis(c){const bk=bankOf(c.num);const col=BANK_C[bk]||(()=>{const h=[...(c.title||bk||"x")].reduce((a,ch)=>a+ch.charCodeAt(0),0)%360;return [`hsl(${h} 55% 38%)`,`hsl(${(h+30)%360} 60% 22%)`]})();const sh=showSecret[c.id];
+  return `<div class="bank" style="background:linear-gradient(135deg,${col[0]},${col[1]})">
+    <div class="row between"><b>${esc(c.title||("بانک "+bk)||"کارت")}</b><span class="chipicon"></span></div>
+    <div class="num" dir="ltr">${sh?grp(c.num):maskCard(c.num)}</div>
+    <div class="row between small"><span>${esc(c.holder||"")}</span><span dir="ltr">${c.exp?(sh?esc(c.exp):"••/••"):""}</span></div>
+    ${bk?`<span class="bk">بانک ${bk}</span>`:""}</div>`}
+function vCards(){
+  if(!VAULT)return backBtn+`<div class="card">${empty("🔒","کیف کارت قفل است.")}</div>`;
+  return backBtn+`<div class="row between"><h2><span class="e">💳</span>کیف کارت‌ها</h2><button class="btn small ghost" data-act="addcard">+ دستی</button></div>
+  <button class="btn saf" data-act="addcardphoto" style="width:100%;margin-bottom:12px;padding:16px;font-size:16px">📸 ساخت کارت با عکس</button>
+  <p class="muted" style="margin-top:0">اطلاعات کارت‌ها با رمز تو رمزنگاری می‌شود و بدون رمز قابل خواندن نیست.</p>
+  <div class="stack">${VAULT.length?VAULT.map(c=>{const sh=showSecret[c.id];return `<div class="card stack">${cardVis(c)}
+    <div class="row between"><span class="muted">شماره کارت</span><span class="row"><b dir="ltr">${sh?grp(c.num):maskCard(c.num)}</b><button class="icon" data-copy="num:${c.id}">کپی</button></span></div>
+    ${c.sheba?`<div class="row between"><span class="muted">شبا</span><span class="row"><b dir="ltr" style="font-size:12.5px">${sh?esc(c.sheba):"IR•• •••• "+esc(c.sheba.slice(-4))}</b><button class="icon" data-copy="sheba:${c.id}">کپی</button></span></div>`:""}
+    ${c.acct?`<div class="row between"><span class="muted">شماره حساب</span><span class="row"><b dir="ltr">${sh?esc(c.acct):"•••• "+esc(c.acct.slice(-4))}</b><button class="icon" data-copy="acct:${c.id}">کپی</button></span></div>`:""}
+    ${c.exp?`<div class="row between"><span class="muted">تاریخ انقضا</span><b dir="ltr">${sh?esc(c.exp):"••/••"}</b></div>`:""}
+    ${c.cvv?`<div class="row between"><span class="muted">CVV2</span><b dir="ltr">${sh?esc(c.cvv):"•••"}</b></div>`:""}
+    ${c.photo&&sh?`<img src="${c.photo}" alt="عکس کارت" style="border-radius:14px">`:""}
+    <div class="row"><button class="btn small ${sh?"ghost":""}" data-show="${c.id}">${sh?"🙈 پنهان کن":"👁️ نمایش"}</button><button class="icon" data-editcard="${c.id}">ویرایش</button><button class="icon" data-delcard="${c.id}">حذف</button></div></div>`}).join(""):`<div class="card">${empty("💳","هنوز کارتی ذخیره نکردی. با دکمه «+ کارت» اضافه کن.")}</div>`}</div>`;
+}
+function shrink(file){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const w=Math.min(720,img.width),h=Math.round(img.height*w/img.width);const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);URL.revokeObjectURL(img.src);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=URL.createObjectURL(file)})}
+function cardForm(c={},auto=false){
+  let photo=c.photo||"";
+  sheet(`<h2 style="margin-top:0">${c.id?"ویرایش کارت":"کارت جدید"}</h2><form class="stack" id="cf">
+    <div class="field"><label for="c_title">نام (مثلاً کارت حقوق)</label><input type="text" id="c_title" value="${esc(c.title||"")}"></div>
+    <div class="field"><label for="c_num">شماره کارت ۱۶ رقمی</label><input type="text" id="c_num" inputmode="numeric" dir="ltr" value="${esc(grp(c.num||""))}" autocomplete="off"><span class="muted" id="c_bank"></span></div>
+    <div class="field"><label for="c_sheba">شماره شبا</label><input type="text" id="c_sheba" dir="ltr" placeholder="IR..." value="${esc(c.sheba||"")}" autocomplete="off"></div>
+    <div class="field"><label for="c_acct">شماره حساب (اختیاری)</label><input type="text" id="c_acct" dir="ltr" inputmode="numeric" value="${esc(c.acct||"")}" autocomplete="off"></div>
+    <div class="grid2"><div class="field"><label for="c_exp">تاریخ انقضا (سال/ماه)</label><input type="text" id="c_exp" dir="ltr" inputmode="numeric" placeholder="05/09" maxlength="5" value="${esc(c.exp||"")}" autocomplete="off"></div>
+    <div class="field"><label for="c_cvv">CVV2</label><div class="pw"><input type="password" id="c_cvv" inputmode="numeric" maxlength="4" dir="ltr" value="${esc(c.cvv||"")}" autocomplete="off">${eye}</div></div></div>
+    <div class="field"><label for="c_holder">نام دارنده کارت</label><input type="text" id="c_holder" value="${esc(c.holder||"")}"></div>
+    <div class="banner">⚠️ پیشنهاد: CVV2 را ذخیره نکن. اگر گوشی یا رمزت لو برود، با شماره کارت + CVV2 + انقضا می‌شود خرید اینترنتی کرد. رمز دوم را هیچ‌وقت ذخیره نکن.</div>
+    <div class="row"><button type="button" class="btn ghost grow" id="c_ph">📸 ${photo?"عوض کردن عکس کارت":"عکس کارت"}</button></div>
+    <img id="c_img" ${photo?`src="${photo}"`:"hidden"} alt="عکس کارت" style="border-radius:14px">
+    <input type="file" id="c_file" accept="image/*" capture="environment" hidden>
+    <p class="err" id="c_err"></p>
+    <div class="row"><button class="btn grow" type="submit">ذخیره</button><button class="btn ghost" type="button" id="c_x">انصراف</button></div></form>`,(sh,close)=>{
+    const num=sh.querySelector("#c_num"),bk=()=>{const n=num.value.replace(/\D/g,"");sh.querySelector("#c_bank").textContent=bankOf(n)?"بانک "+bankOf(n):""};
+    num.addEventListener("input",()=>{num.value=grp(enDigits(num.value).slice(0,19));bk()});bk();
+    sh.querySelector("#c_exp").addEventListener("input",e=>{let v=enDigits(e.target.value).replace(/\D/g,"").slice(0,4);e.target.value=v.length>2?v.slice(0,2)+"/"+v.slice(2):v});
+    sh.querySelector("#c_x").onclick=close;sh.querySelector("#c_ph").onclick=()=>sh.querySelector("#c_file").click();
+    sh.querySelector("#c_file").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{photo=await shrink(f);const im=sh.querySelector("#c_img");im.src=photo;im.hidden=false}catch(err){toast("عکس خوانده نشد");return}
+      if(!(SAMPLE&&IMG))return;const st=sh.querySelector("#c_err");st.style.color="var(--muted)";st.textContent="⏳ در حال خواندن اطلاعات کارت از عکس…";
+      try{const r=await SAMPLE.json(`این عکس یک کارت بانکی ایرانی (روی کارت) است. اطلاعات چاپ‌شده را بخوان و فقط JSON بده: {"num":"۱۶ رقم شماره کارت با ارقام انگلیسی بدون فاصله","sheba":"شماره شبا با IR اگر روی کارت هست","acct":"شماره حساب اگر هست","exp":"تاریخ انقضا به شکل YY/MM","holder":"نام دارنده به فارسی","bank":"نام بانک"}. هر مورد که دیده نمی‌شود رشته خالی باشد. CVV2 را نخوان و برنگردان.`,{images:[f],modelTier:"default"});
+        const put=(id,v)=>{if(v&&!sh.querySelector(id).value.trim())sh.querySelector(id).value=v};
+        if(r.num){num.value=grp(enDigits(r.num).replace(/\D/g,"").slice(0,16));bk()}
+        put("#c_sheba",r.sheba&&enDigits(r.sheba).replace(/\s/g,""));put("#c_acct",r.acct&&enDigits(r.acct));put("#c_exp",r.exp&&enDigits(r.exp));put("#c_holder",r.holder);
+        put("#c_title",r.bank?("کارت "+String(r.bank).replace(/^بانک\s*/,"")):"");
+        st.style.color="";st.textContent=r.num?"":"شماره کارت خوانده نشد؛ دستی وارد کن";toast("اطلاعات خوانده شد؛ چک کن و ذخیره بزن ✓")}
+      catch(err){st.style.color="";st.textContent=err&&err.code==="not_granted"?"اجازه خواندن عکس داده نشد؛ دستی وارد کن":"خواندن عکس نشد؛ دستی وارد کن"}};
+    if(auto)setTimeout(()=>sh.querySelector("#c_file").click(),150);
+    sh.querySelector("#cf").onsubmit=e=>{e.preventDefault();const g=id=>enDigits(sh.querySelector(id).value.trim());
+      const o={title:sh.querySelector("#c_title").value.trim(),num:g("#c_num").replace(/\D/g,""),sheba:g("#c_sheba").replace(/\s/g,"").toUpperCase(),acct:g("#c_acct"),exp:g("#c_exp"),cvv:g("#c_cvv").replace(/\D/g,""),holder:sh.querySelector("#c_holder").value.trim(),photo};
+      const er=m=>sh.querySelector("#c_err").textContent=m;
+      if(!o.num&&!o.sheba)return er("حداقل شماره کارت یا شبا را وارد کن");
+      if(o.num&&(o.num.length!==16||!luhn(o.num)))return er("شماره کارت درست نیست؛ دوباره چک کن");
+      if(o.sheba&&!/^IR\d{24}$/.test(o.sheba.startsWith("IR")?o.sheba:"IR"+o.sheba))return er("شبا باید IR و ۲۴ رقم باشد");
+      if(o.sheba&&!o.sheba.startsWith("IR"))o.sheba="IR"+o.sheba;
+      if(c.id)Object.assign(c,o);else VAULT.unshift({id:uid(),...o});saveVault();close();render();toast("کارت ذخیره شد 💳")};
+  });
+}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-show],[data-copy],[data-editcard],[data-delcard]");if(!t||!VAULT)return;const d=t.dataset;
+  if(d.show){showSecret[d.show]=!showSecret[d.show];render()}
+  else if(d.copy){const[f,id]=d.copy.split(":");const c=VAULT.find(x=>x.id===id);copy(c[f])}
+  else if(d.editcard)cardForm(VAULT.find(x=>x.id===d.editcard));
+  else if(d.delcard){if(t.dataset.armed){VAULT=VAULT.filter(x=>x.id!==d.delcard);saveVault();render();return}t.dataset.armed=1;t.textContent="مطمئنی؟";t.classList.add("danger");setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent="حذف"}},2500)}});
+async function changePass(){sheet(`<h2 style="margin-top:0">تغییر رمز</h2><form class="stack" id="cp">${pwField("op","رمز فعلی")}${pwField("np","رمز جدید (حداقل ۶ حرف)")}${pwField("np2","تکرار رمز جدید")}<p class="err" id="cperr"></p><button class="btn" type="submit">ذخیره</button></form>`,(sh,close)=>{
+  sh.querySelector("#cp").onsubmit=async e=>{e.preventDefault();const er=m=>sh.querySelector("#cperr").textContent=m;const o=sh.querySelector("#op").value,n=sh.querySelector("#np").value;
+    if(await passHash(o,ub64(S.auth.hsalt))!==S.auth.hash)return er("رمز فعلی اشتباه است");if(n.length<6)return er("رمز جدید کوتاه است");if(n!==sh.querySelector("#np2").value)return er("تکرار یکی نیست");
+    const hs=rnd(16),vs=rnd(16);S.auth={...S.auth,hsalt:b64(hs),hash:await passHash(n,hs),vsalt:b64(vs)};VKEY=await aesKey(n,vs);save();saveVault();try{localStorage.removeItem(REM)}catch(e){}close();toast("رمز عوض شد؛ پین را دوباره بساز")}})}
+function setPin(){sheet(`<h2 style="margin-top:0">پین ورود سریع</h2><form class="stack" id="sp">${pwField("pp","رمز")}<div class="field"><label for="pn">پین ۴ رقمی جدید</label><input type="password" id="pn" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="err" id="sperr"></p><button class="btn" type="submit">ذخیره پین</button></form>`,(sh,close)=>{
+  sh.querySelector("#sp").onsubmit=async e=>{e.preventDefault();const er=m=>sh.querySelector("#sperr").textContent=m;const p=sh.querySelector("#pp").value,pin=enDigits(sh.querySelector("#pn").value);
+    if(await passHash(p,ub64(S.auth.hsalt))!==S.auth.hash)return er("رمز اشتباه است");if(!/^\d{4}$/.test(pin))return er("پین باید ۴ رقم باشد");await setRem(p,pin);close();render();toast("پین ذخیره شد 🔐")}})}
+
+function render(){
+  $("#unitBtn").textContent=U();const hh=new Date().getHours();$("#sunny").textContent=hh<5||hh>=20?"🌙":hh<11?"🌤️":hh<16?"☀️":"🌇";
+  $("#hello").innerHTML=`<em>${esc(S.name||"سلام")}</em>، ${greeting()}`;
+  const tj=todayJ();$("#today").textContent=`${WDAYS[weekIdx()]} ${fa(tj[2])} ${MONTHS[tj[1]-1]} ${String(tj[0]).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}`;
+  const V={home:vHome,money:vMoney,shop:vShop,kitchen:vKitchen,more:vMore,inst:vInst,todo:vTodo,save:vSave,report:vReport,accounts:vAccounts,settings:vSettings,cards:vCards};
+  $("#view").innerHTML=UNLOCKED?(V[route]||vHome)():"";renderTabs();
+}
+
+/* ---------- events ---------- */
+const find=(coll,id)=>S[coll].find(x=>x.id===id);
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("[data-go],[data-act],[data-edit],[data-shopt],[data-todot],[data-kt],[data-loc],[data-finish],[data-miss],[data-plan-pick],[data-slot],[data-pay],[data-dep],[data-wd],[data-rep],[data-txf],[data-unit],[data-ht],[data-hc]");if(!t)return;
+  const d=t.dataset;
+  if(d.go){go(d.go);return}
+  if(d.unit){S.unit=d.unit;save();render();return}
+  if(d.txf){txFilter=d.txf;render();return}
+  if(d.ht){hType=d.ht;hCat="all";render();return}
+  if(d.hc){hCat=d.hc;render();return}
+  if(d.kt){kTab=d.kt;render();return}
+  if(d.loc){fLoc=d.loc;render();return}
+  if(d.rep){repM=+d.rep;render();return}
+  if(d.edit){const[c,id]=d.edit.split(":");const x=find(c,id);({tx:txForm,shop:shopForm,fridge:fridgeForm,todo:todoForm,inst:instForm,save:saveForm,accounts:accForm})[c](x);return}
+  if(d.shopt){const x=find("shop",d.shopt);x.done=!x.done;save();render();if(x.done&&S.shop.every(i=>i.done))party();return}
+  if(d.todot){const x=find("todo",d.todot);x.done=!x.done;save();render();return}
+  if(d.finish){const x=find("fridge",d.finish);S.fridge=S.fridge.filter(f=>f!==x);S.shop.unshift({id:uid(),name:x.name,qty:"",done:false});save();render();toast(`${x.name} به لیست خرید رفت`);return}
+  if(d.miss){const r=scoreRecipes().find(r=>r.n===d.miss);let k=0;r.miss.forEach(m=>{if(!S.shop.some(s=>norm(s.name)===norm(m))){S.shop.unshift({id:uid(),name:m,qty:"",done:false});k++}});save();render();toast(`${fa(k)} قلم به لیست خرید اضافه شد`);return}
+  if(d.planPick){pickDay(d.planPick);return}
+  if(d.slot){pickMeal(...d.slot.split(":"));return}
+  if(d.pay){const it=find("inst",d.pay);const n=instNext(it);if(n<0)return;it.paid.push(n);
+    S.tx.unshift({id:uid(),type:"out",amount:it.amount,cat:"اقساط",acc:it.acc||S.accounts[0]?.id,date:jstr(todayJ()),note:`${it.title} — قسط ${n+1}`});save();render();if(instNext(it)<0){party();toast("تبریک! این قسط تسویه شد 🎉")}else toast("قسط پرداخت و ثبت شد");return}
+  if(d.dep){depositForm(find("save",d.dep),1);return}
+  if(d.wd){depositForm(find("save",d.wd),-1);return}
+  const a=d.act;
+  if(a==="addtx")txForm();
+  else if(a==="addshop")shopForm();
+  else if(a==="addfridge")fridgeForm();
+  else if(a==="addtodo")todoForm();
+  else if(a==="addinst")instForm();
+  else if(a==="addsave")saveForm();
+  else if(a==="addacc")accForm();
+  else if(a==="addcard")cardForm();
+  else if(a==="addcardphoto")cardForm({},true);
+  else if(a==="lock")lockNow();
+  else if(a==="chpass")changePass();
+  else if(a==="setpin")setPin();
+  else if(a==="delpin"){try{localStorage.removeItem(REM)}catch(e){}render();toast("پین حذف شد")}
+  else if(a==="photoShop"){if(SAMPLE&&IMG)askPhoto("shop");else toast("عکس‌خوانی در این نمایش در دسترس نیست")}
+  else if(a==="photoFridge")askPhoto("fridge");
+  else if(a==="toFridge"){const done=S.shop.filter(x=>x.done);done.forEach(x=>S.fridge.unshift({id:uid(),name:x.name,qty:x.qty,loc:"یخچال",exp:""}));S.shop=S.shop.filter(x=>!x.done);save();render();toast(`${fa(done.length)} قلم به موجودی رفت`)}
+  else if(a==="shopExpense"){txForm({},{type:"out",cat:"سوپرمارکت",note:S.shop.filter(x=>x.done).map(x=>x.name).join("، ").slice(0,120)})}
+  else if(a==="weekShop"){const need=new Set();Object.values(S.plan).forEach(p=>[p.l,p.d].forEach(m=>{const r=RECIPES.find(r=>r.n===m);r&&r.i.forEach(x=>{if(!have(x))need.add(x)})}));
+    let k=0;need.forEach(m=>{if(!S.shop.some(s=>norm(s.name)===norm(m))){S.shop.unshift({id:uid(),name:m,qty:"",done:false});k++}});save();render();toast(k?`${fa(k)} قلم به لیست خرید اضافه شد`:"همه مواد را داری یا برنامه خالی است")}
+  else if(a==="planAuto"){const R=scoreRecipes();let j=0;for(let i=0;i<7;i++){S.plan[i]=S.plan[i]||{};if(!S.plan[i].l){S.plan[i].l=R[j%R.length].n;j++}if(!S.plan[i].d){S.plan[i].d=R[(j+5)%R.length].n;j++}}save();render();toast("خانه‌های خالی پر شد")}
+  else if(a==="planClear"){S.plan={};save();render()}
+  else if(a==="aiMeal"){runAI("#aiMeal",t,`تو مشاور آشپزی خانواده ایرانی هستی. موجودی آشپزخانه: ${S.fridge.map(f=>f.name+(f.qty?" ("+f.qty+")":"")+(f.exp&&daysUntil(f.exp)<=2?" [نزدیک انقضا]":"")).join("، ")||"خالی"}.
+۵ غذای ایرانی ساده و اقتصادی پیشنهاد بده که بیشتر با همین مواد درست شود و اول مواد نزدیک به انقضا مصرف شود. برای هر غذا: نام، مواد لازم که کم داریم، و یک جمله طرز تهیه. کوتاه و فارسی، بدون مقدمه.`)}
+  else if(a==="aiTip"){const ym=+d.ym;const {by,tot,inc}=tips(ym);runAI("#aiTip",t,`تو مشاور اقتصادی خانواده ایرانی هستی. خلاصه ماه ${MONTHS[ym%100-1]}: درآمد ${inc} تومان، خرج ${tot} تومان. خرج به تفکیک دسته: ${Object.entries(by).map(([c,v])=>c+": "+v).join("، ")}. اقساط ماهانه: ${S.inst.filter(it=>instNext(it)>=0).map(it=>it.title+" "+it.amount).join("، ")||"ندارد"}. اهداف پس‌انداز: ${S.save.map(g=>g.title+" "+g.saved+"/"+g.target).join("، ")||"ندارد"}.
+۵ پیشنهاد عملی و مشخص (با عدد تقریبی صرفه‌جویی به تومان) برای کم کردن خرج و پس‌انداز بیشتر بده. کوتاه، فارسی، بدون مقدمه.`)}
+  else if(a==="setName"){S.name=$("#setName").value.trim()||"مهدی";save();render();toast("ذخیره شد")}
+  else if(a==="notif"){try{const p=await Notification.requestPermission();if(p==="granted")notifyNow();}catch(err){}render()}
+  else if(a==="export"){const {auth,...rest}=S;const txt=JSON.stringify(rest);try{await navigator.clipboard.writeText(txt);toast("پشتیبان کپی شد؛ در یادداشت گوشی نگه دار")}catch(err){sheet(`<h2 style="margin-top:0">متن پشتیبان</h2><textarea rows="8" readonly>${esc(txt)}</textarea>`,sh=>sh.querySelector("textarea").select())}}
+  else if(a==="import"){sheet(`<h2 style="margin-top:0">بازگردانی</h2><p class="muted">متن پشتیبان را اینجا بچسبان. اطلاعات فعلی جایگزین می‌شود.</p><textarea id="imp" rows="8"></textarea><div class="row" style="margin-top:10px"><button class="btn grow" id="ok">بازگردانی</button></div>`,(sh,close)=>sh.querySelector("#ok").onclick=()=>{try{const o=JSON.parse(sh.querySelector("#imp").value);if(!o.tx)throw 0;const au=S.auth;S=o;S.auth=au;save();close();render();toast("بازگردانی شد")}catch(err){toast("متن پشتیبان درست نیست")}})}
+  else if(a==="wipe"){const n=S.name,au=S.auth,un=S.unit;S=blank();S.name=n;S.auth=au;S.unit=un;save();render();toast("آماده‌ای؛ از صفر شروع کن")}
+  else if(a==="wipeAsk"){sheet(`<h2 style="margin-top:0">همه اطلاعات پاک شود؟</h2><p class="muted">تراکنش‌ها، اقساط، لیست‌ها و موجودی همه حذف می‌شوند و برنمی‌گردند.</p><div class="row"><button class="btn grow" id="y" style="background:var(--out);color:#fff">بله، پاک کن</button><button class="btn ghost grow" id="n">نه</button></div>`,(sh,close)=>{sh.querySelector("#n").onclick=close;sh.querySelector("#y").onclick=()=>{const n=S.name,au=S.auth,un=S.unit;S=blank();S.name=n;S.auth=au;S.unit=un;save();close();go("home")}})}
+});
+$("#quickAdd").onclick=()=>txForm();
+document.addEventListener("change",e=>{if(e.target.id==="hm"){hM=+e.target.value;render()}else if(e.target.id==="ha"){txFilter=e.target.value;render()}});
+let hqT;document.addEventListener("input",e=>{if(e.target.id!=="hq")return;hQ=e.target.value;clearTimeout(hqT);hqT=setTimeout(()=>{render();const i=$("#hq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},350)});
+$("#unitBtn").onclick=()=>{S.unit=RIAL()?"toman":"rial";save();render();toast("واحد: "+U())};
+
+let aiCtl=null;
+async function runAI(sel,btn,prompt){const out=$(sel);if(!SAMPLE||!out)return;btn.disabled=true;out.classList.remove("muted");out.textContent="در حال فکر کردن…";
+  aiCtl?.abort();aiCtl=new AbortController();
+  try{await SAMPLE(prompt,{signal:aiCtl.signal,cache:false,onText:({text})=>{out.textContent=text}})}
+  catch(err){out.textContent=err?.code==="not_granted"?"اجازه استفاده داده نشد.":err?.code==="rate_limited"?"کمی بعد دوباره امتحان کن.":"جواب نیامد؛ دوباره امتحان کن."}
+  btn.disabled=false}
+
+function pickMeal(day,slot){const R=scoreRecipes();const cur=(S.plan[day]||{})[slot]||"";
+  sheet(`<h2 style="margin-top:0">${WDAYS[day]} — ${slot==="l"?"ناهار":"شام"}</h2>
+  <div class="chips">${R.map(r=>`<button class="chip ${cur===r.n?"on":""}" data-m="${esc(r.n)}">${esc(r.n)}${r.miss.length===0?" ✓":""}</button>`).join("")}</div>
+  <div class="field" style="margin-top:12px"><label for="cm">یا غذای دیگر</label><input type="text" id="cm" value="${esc(R.some(r=>r.n===cur)?"":cur)}"></div>
+  <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">ذخیره</button><button class="btn ghost" id="clr">خالی</button></div>`,(sh,close)=>{
+    let sel=cur;sh.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{sel=b.dataset.m;sh.querySelectorAll("[data-m]").forEach(x=>x.classList.toggle("on",x===b));sh.querySelector("#cm").value=""});
+    const set=v=>{S.plan[day]=S.plan[day]||{};S.plan[day][slot]=v;save();close();render()};
+    sh.querySelector("#ok").onclick=()=>set(sh.querySelector("#cm").value.trim()||sel);sh.querySelector("#clr").onclick=()=>set("")})}
+function pickDay(meal){sheet(`<h2 style="margin-top:0">«${esc(meal)}» برای کدام روز؟</h2><div class="stack">${WDAYS.map((w,i)=>`<div class="row"><span class="grow">${w}</span><button class="btn small ghost" data-d="${i}:l">ناهار</button><button class="btn small ghost" data-d="${i}:d">شام</button></div>`).join("")}</div>`,(sh,close)=>{
+  sh.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const[i,s]=b.dataset.d.split(":");S.plan[i]=S.plan[i]||{};S.plan[i][s]=meal;save();close();render();toast("به برنامه اضافه شد")})})}
+
+function notifyNow(){try{if(!("Notification" in window)||Notification.permission!=="granted")return;const A=alerts();
+  new Notification(`${S.name}، ${greeting()}`,{body:A.length?A.slice(0,3).map(a=>a.t+": "+a.s).join("\n"):"امروز یادآوری فوری نداری.",lang:"fa",dir:"rtl"})}catch(e){}}
+
+renderTabs();renderLock();
+setInterval(()=>{if(UNLOCKED)render()},300000);
+</script>
+
+<script>
+/* ---------- Android (Capacitor): local notifications + back button ---------- */
+(function(){
+  const C=window.Capacitor; if(!C||!C.isNativePlatform||!C.isNativePlatform())return;
+  const LN=C.Plugins.LocalNotifications, APP=C.Plugins.App;
+  let t=null;
+  async function schedule(){
+    try{
+      const p=await LN.checkPermissions(); if(p.display!=="granted"){const r=await LN.requestPermissions(); if(r.display!=="granted")return;}
+      const pend=await LN.getPending(); if(pend.notifications.length) await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+      const N=[]; let id=1; const now=new Date();
+      for(let k=0;k<14;k++){
+        const day=new Date(now.getFullYear(),now.getMonth(),now.getDate()+k);
+        const j=jstr(g2j(day.getFullYear(),day.getMonth()+1,day.getDate()));
+        const items=[];
+        S.inst.forEach(it=>{const n=instNext(it);if(n>=0&&instDue(it,n)===j)items.push("قسط "+it.title+": "+toman(it.amount))});
+        S.todo.forEach(x=>{if(!x.done&&x.due===j)items.push("کار: "+x.text)});
+        S.fridge.forEach(f=>{if(f.exp===j)items.push(f.name+" امروز تاریخش تمام می‌شود")});
+        const at9=new Date(day);at9.setHours(9,0,0,0);
+        if(at9>now) N.push({id:id++,title:(S.name||"")+"، صبح بخیر",body:items.length?items.join("\n"):"امروز یادآوری خاصی نداری. خرج‌هایت را ثبت کن.",schedule:{at:at9,allowWhileIdle:true}});
+        const wi=(day.getDay()+1)%7, pl=S.plan[wi]||{};
+        const at12=new Date(day);at12.setHours(12,30,0,0);
+        if(at12>now) N.push({id:id++,title:(S.name||"")+"، ظهر بخیر",body:pl.l||pl.d?["ناهار: "+(pl.l||"—"),"شام: "+(pl.d||"—")].join(" · "):"برنامه غذای امروز خالی است؛ از بخش آشپزخانه پیشنهاد بگیر.",schedule:{at:at12,allowWhileIdle:true}});
+        const jj=g2j(day.getFullYear(),day.getMonth()+1,day.getDate()), nx=new Date(day);nx.setDate(nx.getDate()+1);
+        if(g2j(nx.getFullYear(),nx.getMonth()+1,nx.getDate())[1]!==jj[1]){const at20=new Date(day);at20.setHours(20,0,0,0);
+          if(at20>now) N.push({id:id++,title:"گزارش "+MONTHS[jj[1]-1]+" آماده است",body:"ببین این ماه بیشتر کجا خرج کردی و پیشنهادهای صرفه‌جویی را بخوان.",schedule:{at:at20,allowWhileIdle:true}});}
+      }
+      if(S.shop.some(x=>!x.done)){const d=new Date(now);d.setHours(18,0,0,0);if(d<=now)d.setDate(d.getDate()+1);
+        N.push({id:id++,title:"لیست خرید",body:S.shop.filter(x=>!x.done).length+" قلم در لیست خرید مانده",schedule:{at:d,allowWhileIdle:true}});}
+      if(N.length) await LN.schedule({notifications:N});
+    }catch(e){console.log(e)}
+  }
+  const _save=save; save=function(){_save();clearTimeout(t);t=setTimeout(schedule,1500)};
+  schedule();
+  if(APP) APP.addListener("backButton",()=>{
+    const sh=document.querySelector(".sheet-bg"); if(sh){sh.remove();return}
+    if(route!=="home"){go(["inst","todo","save","report","accounts","settings","cards"].includes(route)?"more":"home");return}
+    APP.exitApp();
+  });
+  window.Notification=undefined;
+})();
+</script>
+</body>
+</html>
