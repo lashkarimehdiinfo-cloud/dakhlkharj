@@ -15,6 +15,73 @@ jobs:
           distribution: temurin
           java-version: 17
       - run: npm install
+      - name: Extra plugins
+        run: npm install @capacitor/background-runner@^2.0.0 || echo "background runner skipped"
+      - name: App config
+        run: |
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "ir.dakhlkharj.app",
+            "appName": "دخل و خرج خانه",
+            "webDir": "www",
+            "plugins": {
+              "LocalNotifications": { "iconColor": "#0F5A4B" },
+              "BackgroundRunner": {
+                "label": "ir.dakhlkharj.check",
+                "src": "runners/background.js",
+                "event": "check",
+                "repeat": true,
+                "interval": 15,
+                "autoStart": true
+              }
+            }
+          }
+          JSON
+      - name: Background checker
+        run: |
+          mkdir -p www/runners
+          cat > www/runners/background.js <<'JS'
+          addEventListener('cfg', function (resolve, reject, args) {
+            try { CapacitorKV.set('cfg', JSON.stringify(args || {})); resolve(); } catch (e) { reject(e); }
+          });
+          addEventListener('check', async function (resolve, reject, args) {
+            try {
+              var r = CapacitorKV.get('cfg');
+              var c = r && r.value ? JSON.parse(r.value) : null;
+              if (!c || !c.home || !c.code) { resolve(); return; }
+              var s = CapacitorKV.get('since');
+              var since = Math.max(c.since || 0, s && s.value ? +s.value : 0);
+              var res = await fetch(c.url + '/rest/v1/rpc/home_peek', {
+                method: 'POST',
+                headers: { apikey: c.key, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ p_home: c.home, p_code: c.code, p_since: since })
+              });
+              var j = await res.json();
+              var items = (j && j.items) || [];
+              var mx = since;
+              items.forEach(function (x) { if (x.u > mx) mx = x.u; });
+              var lab = { shop: '🛒 لیست خرید', todo: '✅ کار جدید', tx: '💸 خرج جدید' };
+              var mine = items.filter(function (x) { return x.ub && x.ub !== c.me; });
+              if (since > 0 && mine.length) {
+                CapacitorNotifications.schedule(mine.slice(0, 5).map(function (x, i) {
+                  return { id: 800000 + (Date.now() % 9000) + i, title: lab[x.k] + ' — ' + (x.ubn || 'خانواده'), body: x.n || '', scheduleAt: new Date(Date.now() + 1000) };
+                }));
+              }
+              CapacitorKV.set('since', String(mx || Date.now()));
+              resolve();
+            } catch (e) { reject(e); }
+          });
+          JS
+      - name: Persian OCR files
+        run: |
+          npm install --no-save tesseract.js@5 tesseract.js-core@5 @tesseract.js-data/fas @tesseract.js-data/eng || echo "ocr packages skipped"
+          mkdir -p www/ocr
+          cp node_modules/tesseract.js/dist/tesseract.min.js node_modules/tesseract.js/dist/worker.min.js www/ocr/ || true
+          cp node_modules/tesseract.js-core/tesseract-core*.js www/ocr/ || true
+          cp node_modules/tesseract.js-core/tesseract-core*.wasm www/ocr/ || true
+          find node_modules/@tesseract.js-data -name "*best_int*" -prune -o -name "*.traineddata.gz" -print -exec cp {} www/ocr/ \; || true
+          find node_modules/@tesseract.js-data -path "*best_int*" -name "*.traineddata.gz" -exec cp {} www/ocr/ \; || true
+          ls -la www/ocr || true
       - run: npx cap add android
       - run: npx cap sync android
       - name: Permissions
@@ -22,7 +89,9 @@ jobs:
       - name: Fixed signing key
         run: mkdir -p ~/.android && cp debug.keystore ~/.android/debug.keystore
       - name: Build
-        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+        run: |
+          cd android && chmod +x gradlew
+          ./gradlew assembleDebug || (cd .. && npm uninstall @capacitor/background-runner && npx cap sync android && cd android && ./gradlew assembleDebug)
       - uses: actions/upload-artifact@v4
         with:
           name: dakhlkharj-apk
