@@ -30,7 +30,7 @@ html{-webkit-text-size-adjust:100%}body{margin:0}:root{padding-top:env(safe-area
   --shadow:0 6px 18px rgba(0,0,0,.35);color-scheme:dark}
 [hidden]{display:none!important}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{background:var(--bg);color:var(--ink)}
+html,body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 body{font-family:var(--body);font-size:15px;line-height:1.65;direction:rtl;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px;
   font-variant-numeric:tabular-nums;
@@ -159,9 +159,8 @@ input[type=text],input[type=password],input[type=number],select,textarea{font:in
 .confetti{position:fixed;top:-30px;z-index:50;font-size:22px;pointer-events:none}
 @media (prefers-reduced-motion:no-preference){
   .sheet{animation:up .25s cubic-bezier(.2,.9,.3,1.2)}@keyframes up{from{transform:translateY(40px);opacity:.5}}
-  #view>*{animation:fade .3s ease both}@keyframes fade{from{opacity:.4;transform:translateY(6px)}}
-  .confetti{animation:fall 1.6s ease-in forwards}@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.8}}
-  .sunny{animation:bob 3s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-3px) rotate(-4deg)}}}
+  #view.enter>*{animation:fade .25s ease both}@keyframes fade{from{opacity:.4}}
+  .confetti{animation:fall 1.6s ease-in forwards}@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.8}}}
 .lock{position:fixed;inset:0;z-index:60;overflow:auto;background:var(--bg);
   background-image:radial-gradient(circle at 85% 10%,color-mix(in srgb,var(--saffron) 25%,transparent) 0,transparent 280px),radial-gradient(circle at 10% 90%,color-mix(in srgb,var(--brand) 22%,transparent) 0,transparent 300px);
   display:flex;align-items:center;justify-content:center;
@@ -202,6 +201,7 @@ input[type=text],input[type=password],input[type=number],select,textarea{font:in
 <nav class="tabs" id="tabs"></nav>
 <button class="fab" id="quickAdd" aria-label="ثبت سریع خرج">+</button>
 <input type="file" id="photo" accept="image/*" capture="environment" hidden>
+<script src="ocr/tesseract.min.js"></script>
 
 <script>
 /* ---------- utils ---------- */
@@ -329,7 +329,7 @@ function alerts(){
 /* ---------- ui helpers ---------- */
 let route="home",sub=null,kTab="fridge",fLoc="همه",repM=null,txFilter="all",hM=0,hCat="all",hType="all",hQ="";
 function toast(m){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
-function go(r,s=null){route=r;sub=s;render();scrollTo(0,0)}
+let ENTER=false,LASTH="";function go(r,s=null){route=r;sub=s;ENTER=true;render();scrollTo(0,0)}
 function sheet(html,bind){const bg=document.createElement("div");bg.className="sheet-bg";bg.innerHTML=`<div class="sheet" role="dialog">${html}</div>`;
   bg.addEventListener("click",e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);bind&&bind(bg.querySelector(".sheet"),()=>bg.remove());return bg}
 function moneyInput(el){el.addEventListener("input",()=>{if(FX()){el.value=enDigits(el.value).replace(/[^\d.]/g,"");return}const v=num(el.value);el.value=v?v.toLocaleString("en"):""})}
@@ -405,25 +405,70 @@ function depositForm(g,dir=1){form(dir>0?`واریز به «${g.title}»`:`بر�
 
 /* ---------- photo → list (Claude) ---------- */
 let photoMode="shop";
+const PHOTO=()=>!!((SAMPLE&&IMG)||window.ocrText);
 function askPhoto(mode){photoMode=mode;$("#photo").value="";$("#photo").click()}
-$("#photo").addEventListener("change",async e=>{const file=e.target.files[0];if(!file||!SAMPLE)return;
-  const bg=sheet(`<h2 style="margin-top:0">در حال خواندن عکس…</h2><p class="muted">چند ثانیه صبر کن.</p>`);
-  try{
-    const prompt=photoMode==="shop"
-      ?`این عکس را برای یک اپ لیست خرید خانه بخوان. ممکن است یک لیست دست‌نویس، فاکتور فروشگاه، قفسه یا کالاهای خوراکی باشد. هر قلم کالا را با مقدارش (اگر معلوم است) به فارسی استخراج کن. فقط JSON بده به شکل {"items":[{"name":"...","qty":"..."}]}. اگر چیزی پیدا نشد items خالی باشد.`
-      :`این عکس داخل یخچال یا کابینت آشپزخانه است. مواد غذایی دیده‌شده را به فارسی با مقدار تقریبی لیست کن. فقط JSON بده به شکل {"items":[{"name":"...","qty":"..."}]}.`;
-    const r=await SAMPLE.json(prompt,{images:[file],modelTier:"default"});
-    const items=(r&&r.items||[]).filter(x=>x&&x.name);bg.remove();
-    if(!items.length){toast("چیزی در عکس پیدا نشد");return}
-    sheet(`<h2 style="margin-top:0">${fa(items.length)} قلم پیدا شد</h2><p class="muted" style="margin-top:0">تیک هرکدام را که نمی‌خواهی بردار.</p>
-      <div class="list">${items.map((x,i)=>`<label class="item"><input type="checkbox" checked data-i="${i}"><span class="t">${esc(x.name)} <span class="muted">${esc(x.qty||"")}</span></span></label>`).join("")}</div>
-      <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">افزودن به ${photoMode==="shop"?"لیست خرید":"موجودی"}</button><button class="btn ghost" id="no">انصراف</button></div>`,
-      (sh,close)=>{sh.querySelector("#no").onclick=close;sh.querySelector("#ok").onclick=()=>{
-        sh.querySelectorAll("input:checked").forEach(c=>{const x=items[c.dataset.i];
-          if(photoMode==="shop")S.shop.unshift({id:uid(),name:x.name,qty:x.qty||"",done:false});
-          else S.fridge.unshift({id:uid(),name:x.name,qty:x.qty||"",loc:"یخچال",exp:""})});
-        close();save();render();toast("اضافه شد")}});
-  }catch(err){bg.remove();toast(err&&err.code==="not_granted"?"اجازه استفاده از هوش مصنوعی داده نشد":"خواندن عکس نشد؛ دوباره امتحان کن")}
+function photoMenu(){if(!PHOTO())return toast("عکس‌خوانی در این نمایش در دسترس نیست");
+  sheet(`<h2 style="margin-top:0">📸 از چی عکس می‌گیری؟</h2><div class="stack">
+  <button class="tile c2" data-pm="shop"><span class="ti">🛒</span><b>لیست خرید</b><span>لیست دست‌نویس یا یادداشت ← به لیست خرید اضافه می‌شود</span></button>
+  <button class="tile c3" data-pm="invoice"><span class="ti">🧾</span><b>فاکتور خرید</b><span>مبلغ از کارت کم می‌شود و اقلام به یخچال می‌رود</span></button>
+  <button class="tile c1" data-pm="fridge"><span class="ti">🧊</span><b>موجودی یخچال و کابینت</b><span>به موجودی آشپزخانه اضافه می‌شود</span></button></div>`,
+  (sh,close)=>sh.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{close();askPhoto(b.dataset.pm)}))}
+const UNITS="کیلوگرم|کیلو|گرم|عدد|تا|بسته|لیتر|بطری|قوطی|شانه|کیسه|کارتن|متر|جفت|دانه";
+const SKIPW=/جمع|تخفیف|مالیات|فاکتور|تاریخ|شماره|تلفن|آدرس|ساعت|کد|پرداخت|مبلغ|ریال|تومان|صندوق|فروشگاه|اقتصادی|ممنون|total|tax|date/i;
+function parseList(text){const out=[];
+  enDigits(text).replace(/ي/g,"ی").replace(/ك/g,"ک").split(/\n+/).forEach(l=>{l=l.replace(/[|_*•·\-–—:؛;"'()\[\]]/g," ").replace(/\s+/g," ").trim();
+    if(l.length<2||SKIPW.test(l)||!/[آ-ی]{2,}/.test(l))return;
+    const m=l.match(new RegExp("(\\d+(?:[.,/]\\d+)?)\\s*("+UNITS+")?"));let qty="",name=l;
+    if(m&&!(m[1].replace(/\D/g,"").length>=4&&!m[2])){qty=(m[1]+(m[2]?" "+m[2]:"")).trim();name=l.replace(m[0]," ")}
+    name=name.replace(/\d[\d,.]*/g," ").replace(new RegExp("\\b("+UNITS+")\\b","g")," ").replace(/\s+/g," ").trim();
+    if(name.length>=2&&name.length<40)out.push({name,qty})});
+  return out.slice(0,40)}
+function parseInvoice(text){const t=enDigits(text);const lines=t.split(/\n+/);let total=0;
+  const nums=s=>(s.match(/\d[\d,٬.]{2,}\d/g)||[]).map(x=>+x.replace(/[,٬]/g,"").replace(/\.(?=\d{3}\b)/g,"")).filter(x=>x>=1000&&x<1e12);
+  lines.forEach(l=>{if(/جمع|قابل پرداخت|مبلغ کل|مبلغ نهایی|پرداختی|total/i.test(l)){const n=nums(l);if(n.length)total=Math.max(total,...n)}});
+  if(!total){const n=nums(t);if(n.length)total=Math.max(...n)}
+  const unit=/تومان/.test(t)&&!/ریال/.test(t)?"toman":"rial";
+  return {total,unit,items:parseList(text),store:""}}
+async function readPhoto(file,mode){
+  if(SAMPLE&&IMG){
+    const P={shop:`این عکس را برای یک اپ لیست خرید خانه بخوان (لیست دست‌نویس، یادداشت یا کالاها). هر قلم را با مقدارش به فارسی استخراج کن. فقط JSON: {"items":[{"name":"...","qty":"..."}]}`,
+      fridge:`این عکس داخل یخچال یا کابینت آشپزخانه است. مواد غذایی را به فارسی با مقدار تقریبی لیست کن. فقط JSON: {"items":[{"name":"...","qty":"..."}]}`,
+      invoice:`این عکس فاکتور یا رسید خرید ایرانی است. مبلغ نهایی قابل پرداخت را عدد (بدون جداکننده) بده، واحدش را از روی فاکتور تشخیص بده (rial یا toman؛ اگر معلوم نیست rial)، نام فروشگاه و اقلام خریده‌شده به فارسی با مقدار. فقط JSON: {"total":0,"unit":"rial","store":"","items":[{"name":"","qty":""}]}`};
+    const r=await SAMPLE.json(P[mode],{images:[file],modelTier:"default"});
+    return mode==="invoice"?{total:+r.total||0,unit:r.unit==="toman"?"toman":"rial",store:r.store||"",items:(r.items||[]).filter(x=>x&&x.name)}:{items:(r.items||[]).filter(x=>x&&x.name)};
+  }
+  const text=await window.ocrText(file);
+  return mode==="invoice"?parseInvoice(text):{items:parseList(text)};
+}
+$("#photo").addEventListener("change",async e=>{const file=e.target.files[0];if(!file||!PHOTO())return;const mode=photoMode;
+  const bg=sheet(`<h2 style="margin-top:0">⏳ در حال خواندن عکس…</h2><p class="muted">${SAMPLE?"چند ثانیه صبر کن.":"بار اول کمی بیشتر طول می‌کشد (۱۰ تا ۳۰ ثانیه)."}</p>`);
+  let r;try{r=await readPhoto(file,mode)}catch(err){bg.remove();toast(err&&err.code==="not_granted"?"اجازه استفاده از هوش مصنوعی داده نشد":"خواندن عکس نشد؛ عکس واضح‌تر و نزدیک‌تر بگیر");return}
+  bg.remove();const items=r.items||[];
+  const itemList=`<div class="list">${items.map((x,i)=>`<label class="item"><input type="checkbox" checked data-i="${i}">${bub(foodE(x.name),x.name)}<span class="t"><input type="text" value="${esc(x.name)}" data-n="${i}" style="padding:6px 8px"> </span><input type="text" value="${esc(x.qty||"")}" data-q="${i}" style="width:84px;padding:6px 8px" placeholder="مقدار"></label>`).join("")}</div>`;
+  const pick=sh=>{const res=[];sh.querySelectorAll("input[type=checkbox][data-i]:checked").forEach(c=>{const i=c.dataset.i;const n=sh.querySelector(`[data-n="${i}"]`).value.trim();if(n)res.push({name:n,qty:sh.querySelector(`[data-q="${i}"]`).value.trim()})});return res};
+  if(mode!=="invoice"){
+    if(!items.length)return toast("چیزی در عکس پیدا نشد؛ عکس واضح‌تر بگیر");
+    sheet(`<h2 style="margin-top:0">${fa(items.length)} قلم پیدا شد ✓</h2><p class="muted" style="margin-top:0">اگر چیزی اشتباه خوانده شده، همین‌جا درستش کن.</p>${itemList}
+      <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">افزودن به ${mode==="shop"?"لیست خرید":"موجودی"}</button><button class="btn ghost" id="no">انصراف</button></div>`,
+      (sh,close)=>{sh.querySelector("#no").onclick=close;sh.querySelector("#ok").onclick=()=>{const p=pick(sh);
+        p.forEach(x=>{if(mode==="shop")S.shop.unshift({id:uid(),name:x.name,qty:x.qty,done:false});else S.fridge.unshift({id:uid(),name:x.name,qty:x.qty,loc:"یخچال",exp:""})});
+        close();save();render();toast(fa(p.length)+" قلم اضافه شد ✓")}});
+    return;
+  }
+  const tot=r.unit==="rial"?r.total/10:r.total;
+  sheet(`<h2 style="margin-top:0">🧾 فاکتور خوانده شد</h2>
+    <div class="field"><label for="iv_amt">مبلغ کل (${U()})</label><input type="text" id="iv_amt" inputmode="decimal" dir="ltr" value="${tot?(FX()?String(+(tot*F()).toFixed(2)):Math.round(tot*F()).toLocaleString("en")):""}"></div>
+    ${!tot?`<p class="err">مبلغ پیدا نشد؛ دستی بنویس.</p>`:`<span class="muted">روی فاکتور: ${fa(r.total)} ${r.unit==="rial"?"ریال":"تومان"}</span>`}
+    <div class="field"><label for="iv_acc">از کدام کارت کم شود؟</label><select id="iv_acc">${S.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} — ${toman(balance(a))}</option>`).join("")}</select></div>
+    <div class="field"><label for="iv_cat">دسته</label><select id="iv_cat">${OUT_CATS.map(c=>`<option>${c}</option>`).join("")}</select></div>
+    <div class="field"><label for="iv_note">توضیح</label><input type="text" id="iv_note" value="${esc(r.store||"فاکتور خرید")}"></div>
+    ${items.length?`<b style="display:block;margin-top:10px">اقلام فاکتور (تیک‌خورده‌ها به موجودی یخچال می‌روند و از لیست خرید خط می‌خورند)</b>${itemList}`:""}
+    <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">ثبت خرج</button><button class="btn ghost" id="no">انصراف</button></div>`,
+    (sh,close)=>{const a=sh.querySelector("#iv_amt");moneyInput(a);sh.querySelector("#no").onclick=close;sh.querySelector("#ok").onclick=()=>{
+      const amt=num(a.value)/F();if(!amt){toast("مبلغ را وارد کن");return}
+      S.tx.unshift({id:uid(),type:"out",amount:amt,cat:sh.querySelector("#iv_cat").value,acc:sh.querySelector("#iv_acc").value,date:jstr(todayJ()),note:sh.querySelector("#iv_note").value.trim()});
+      const p=pick(sh);p.forEach(x=>{S.fridge.unshift({id:uid(),name:x.name,qty:x.qty,loc:"یخچال",exp:""});const s=S.shop.find(q=>!q.done&&(norm(q.name).includes(norm(x.name))||norm(x.name).includes(norm(q.name))));if(s)s.done=true});
+      close();save();render();toast("خرج ثبت شد و از کارت کم شد ✓")}});
 });
 
 /* ---------- views ---------- */
@@ -477,7 +522,7 @@ function vHome(){
   <h2><span class="e">⚡</span>میان‌بر</h2>
   <div class="tiles">
     <button class="tile c1" data-act="addtx"><span class="ti">✍️</span><b>ثبت دخل / خرج</b><span>کارت یا نقدی</span></button>
-    <button class="tile c2" data-act="photoShop"><span class="ti">📸</span><b>عکس ← لیست خرید</b><span>${SAMPLE&&IMG?"از لیست یا فاکتور عکس بگیر":"در این نمایش در دسترس نیست"}</span></button>
+    <button class="tile c2" data-act="photoMenu"><span class="ti">📸</span><b>عکس بگیر</b><span>${PHOTO()?"لیست، فاکتور یا یخچال":"در این نمایش در دسترس نیست"}</span></button>
     <button class="tile c4" data-go="cards"><span class="ti">💳</span><b>کیف کارت‌ها</b><span>شماره کارت و شبا</span></button>
     <button class="tile c3" data-go="save"><span class="ti">🐷</span><b>پس‌انداز</b><span>${target?fa(Math.round(saved/target*100))+"٪ از هدف‌ها":"یک هدف بساز"}</span></button>
     <button class="tile c5" data-go="report"><span class="ti">📊</span><b>گزارش این ماه</b><span>و پیشنهاد صرفه‌جویی</span></button>
@@ -502,7 +547,7 @@ function vMoney(){
     <div class="mini" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">${S.accounts.map(a=>`<div><span class="lab">${a.type==="cash"?"💵":a.type==="bank"?"🏦":"💳"} ${esc(a.name)}</span><b>${toman(balance(a))}</b></div>`).join("")}</div>
   </div>
   <div class="row" style="margin-top:10px"><button class="btn ghost grow" data-go="accounts">🏦 حساب‌ها</button><button class="btn ghost grow" data-go="cards">💳 کیف کارت‌ها</button></div>
-  <div class="row between"><h2><span class="e">🕘</span>تاریخچه خرج و درآمد</h2><button class="btn small" data-act="addtx">+ ثبت</button></div>
+  <div class="row between"><h2><span class="e">🕘</span>تاریخچه خرج و درآمد</h2><span class="row" style="gap:6px">${PHOTO()?`<button class="btn small saf" data-act="photoInvoice">📸 فاکتور</button>`:""}<button class="btn small" data-act="addtx">+ ثبت</button></span></div>
   <div class="card stack" style="margin-bottom:12px">
     <input type="text" id="hq" placeholder="🔍 جستجو: مثلاً نان، پیتزا، قبض…" value="${esc(hQ)}" autocomplete="off">
     <div class="row"><select id="hm" aria-label="ماه" class="grow"><option value="0">همه ماه‌ها</option>${months.map(m=>`<option value="${m}" ${m===hM?"selected":""}>${MONTHS[m%100-1]} ${String(Math.floor(m/100)).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}</option>`).join("")}</select>
@@ -523,8 +568,8 @@ function vShop(){
   const open=S.shop.filter(x=>!x.done),done=S.shop.filter(x=>x.done);
   const row=x=>`<div class="item ${x.done?"done":""}"><input type="checkbox" data-shopt="${x.id}" ${x.done?"checked":""} aria-label="خریده شد">${bub(foodE(x.name),x.name)}<span class="t"><b>${esc(x.name)}</b> <span class="muted">${esc(x.qty||"")}</span></span><button class="icon" data-edit="shop:${x.id}">ویرایش</button><button class="icon" data-del="shop:${x.id}">حذف</button></div>`;
   return `<div class="row between"><h2><span class="e">🛒</span>لیست خرید</h2><span class="pill ${open.length?"warn":"ok"}">${open.length?fa(open.length)+" مانده":"کامل شد"}</span></div>
-  <div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="addshop">+ افزودن</button>${SAMPLE&&IMG?`<button class="btn saf grow" data-act="photoShop">📸 عکس بگیر</button>`:""}</div>
-  ${SAMPLE&&IMG?`<p class="muted" style="margin-top:0">از لیست دست‌نویس، فاکتور یا خود کالا عکس بگیر؛ اقلام خودکار به لیست اضافه می‌شوند.</p>`:""}
+  <div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="addshop">+ افزودن</button>${PHOTO()?`<button class="btn saf grow" data-act="photoShop">📸 عکس بگیر</button>`:""}</div>
+  ${PHOTO()?`<p class="muted" style="margin-top:0">از لیست دست‌نویس، فاکتور یا خود کالا عکس بگیر؛ اقلام خودکار به لیست اضافه می‌شوند.</p>`:""}
   <div class="card list">${open.length?open.map(row).join(""):empty(done.length?"🎉":"🧺",done.length?"همه را خریدی!":"لیست خالی است.")}</div>
   ${done.length?`<h2><span class="e">✅</span>خریده شد</h2><div class="card list">${done.map(row).join("")}</div>
   <div class="stack" style="margin-top:12px"><button class="btn" data-act="toFridge">🧊 انتقال خریده‌ها به یخچال و کابینت</button><button class="btn ghost" data-act="shopExpense">🧾 ثبت هزینه این خرید</button></div>`:""}`;
@@ -535,7 +580,7 @@ function vKitchen(){
   if(kTab==="fridge"){
     const items=S.fridge.filter(f=>fLoc==="همه"||f.loc===fLoc);const LE={"همه":"🏠","یخچال":"🧊","فریزر":"❄️","کابینت":"🗄️"};
     return tab+`<div class="chips">${["همه","یخچال","فریزر","کابینت"].map(l=>`<button class="chip ${fLoc===l?"on":""}" data-loc="${l}">${LE[l]} ${l}</button>`).join("")}</div>
-    <div class="row" style="margin:12px 0"><button class="btn grow" data-act="addfridge">+ افزودن</button>${SAMPLE&&IMG?`<button class="btn saf grow" data-act="photoFridge">📸 عکس از یخچال</button>`:""}</div>
+    <div class="row" style="margin:12px 0"><button class="btn grow" data-act="addfridge">+ افزودن</button>${PHOTO()?`<button class="btn saf grow" data-act="photoFridge">📸 عکس از یخچال</button>`:""}</div>
     <div class="card list">${items.length?items.map(f=>{const d=f.exp?daysUntil(f.exp):null;
       return `<div class="item">${bub(foodE(f.name),f.name)}<div class="t"><b>${esc(f.name)}</b> <span class="muted">${esc(f.qty||"")}</span><br><span class="pill">${LE[f.loc]||""} ${esc(f.loc)}</span> ${d!==null?`<span class="pill ${d<0?"bad":d<=2?"warn":"ok"}">${d<0?"تاریخ گذشته":d===0?"امروز":fa(d)+" روز مانده"}</span>`:""}</div>
       <button class="icon" data-finish="${f.id}">تمام شد</button><button class="icon" data-edit="fridge:${f.id}">ویرایش</button><button class="icon" data-del="fridge:${f.id}">حذف</button></div>`}).join(""):empty("🧊","چیزی ثبت نشده. مواد یخچال، فریزر و کابینت را اضافه کن تا پیشنهاد غذا بگیری.")}</div>
@@ -804,7 +849,7 @@ function render(){
   $("#hello").innerHTML=`<em>${esc(S.name||"سلام")}</em>، ${greeting()}`;
   const tj=todayJ();$("#today").textContent=`${WDAYS[weekIdx()]} ${fa(tj[2])} ${MONTHS[tj[1]-1]} ${String(tj[0]).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}`;
   const V={home:vHome,money:vMoney,shop:vShop,kitchen:vKitchen,more:vMore,inst:vInst,todo:vTodo,save:vSave,report:vReport,accounts:vAccounts,settings:vSettings,cards:vCards};
-  $("#view").innerHTML=UNLOCKED?(V[route]||vHome)():"";renderTabs();
+  const vh=UNLOCKED?(V[route]||vHome)():"";const vw=$("#view");if(vh!==LASTH){vw.innerHTML=vh;LASTH=vh}vw.classList.toggle("enter",ENTER);if(ENTER)setTimeout(()=>vw.classList.remove("enter"),300);ENTER=false;renderTabs();
 }
 
 /* ---------- events ---------- */
@@ -846,7 +891,9 @@ document.addEventListener("click",async e=>{
   else if(a==="chpass")changePass();
   else if(a==="setpin")setPin();
   else if(a==="delpin"){try{localStorage.removeItem(REM)}catch(e){}render();toast("پین حذف شد")}
-  else if(a==="photoShop"){if(SAMPLE&&IMG)askPhoto("shop");else toast("عکس‌خوانی در این نمایش در دسترس نیست")}
+  else if(a==="photoShop"){if(PHOTO())askPhoto("shop");else toast("عکس‌خوانی در این نمایش در دسترس نیست")}
+  else if(a==="photoMenu")photoMenu();
+  else if(a==="photoInvoice"){if(PHOTO())askPhoto("invoice");else toast("عکس‌خوانی در این نمایش در دسترس نیست")}
   else if(a==="photoFridge")askPhoto("fridge");
   else if(a==="toFridge"){const done=S.shop.filter(x=>x.done);done.forEach(x=>S.fridge.unshift({id:uid(),name:x.name,qty:x.qty,loc:"یخچال",exp:""}));S.shop=S.shop.filter(x=>!x.done);save();render();toast(`${fa(done.length)} قلم به موجودی رفت`)}
   else if(a==="shopExpense"){txForm({},{type:"out",cat:"سوپرمارکت",note:S.shop.filter(x=>x.done).map(x=>x.name).join("، ").slice(0,120)})}
@@ -905,13 +952,14 @@ if(SY.url===undefined)SY.url=SB_URL_DEFAULT;
 if(SY.key===undefined)SY.key=SB_KEY_DEFAULT;
 const sySave=()=>{try{localStorage.setItem(SKEY,JSON.stringify(SY))}catch(e){}};
 let syStatus="",syBusy=false,syDirty=false,syPushT=null,syLast=0,syRender=false;
-const strip=o=>{const {_u,...r}=o;return JSON.stringify(r)};
+const strip=o=>{const {_u,ub,ubn,...r}=o;return JSON.stringify(r)};
+const stable=v=>Array.isArray(v)?"["+v.map(stable).join(",")+"]":v&&typeof v==="object"?"{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+stable(v[k])).join(",")+"}":JSON.stringify(v);
 let PREV=null;
 function snap(){PREV={};SYNC_ARR.forEach(k=>(S[k]||[]).forEach(it=>PREV[it.id]=strip(it)));PREV.__plan=JSON.stringify(S.plan||{});PREV.__unit=S.unit||"toman"}
 function stamp(){
   if(!PREV){snap();return}
   S._m=S._m||{tomb:{}};const now=Date.now(),seen={};
-  SYNC_ARR.forEach(k=>(S[k]||[]).forEach(it=>{seen[it.id]=1;const j=strip(it);if(PREV[it.id]!==j)it._u=now}));
+  SYNC_ARR.forEach(k=>(S[k]||[]).forEach(it=>{seen[it.id]=1;const j=strip(it);if(PREV[it.id]!==j){it._u=now;it.ub=SY.email||"";it.ubn=S.name||"";PREV[it.id]=strip(it)}}));
   Object.keys(PREV).forEach(id=>{if(!id.startsWith("__")&&!seen[id])S._m.tomb[id]=now});
   if(JSON.stringify(S.plan||{})!==PREV.__plan)S._m.planU=now;
   if((S.unit||"toman")!==PREV.__unit)S._m.unitU=now;
@@ -948,7 +996,7 @@ function safeRender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELEC
 async function pull(){
   if(!SY.home||syBusy)return;syBusy=true;
   try{await auth();const a=await sb(`/rest/v1/homes?id=eq.${SY.home}&select=state,rev`);
-    if(a&&a[0]&&a[0].rev!==SY.rev){const m=merge(shared(S),a[0].state||{});applyShared(m);SY.rev=a[0].rev;sySave();safeRender();if(JSON.stringify(shared(S))!==JSON.stringify(a[0].state))syDirty=true}
+    if(a&&a[0]&&a[0].rev!==SY.rev){familyNews(a[0].state||{});const m=merge(shared(S),a[0].state||{});applyShared(m);SY.rev=a[0].rev;sySave();safeRender();if(stable(shared(S))!==stable(a[0].state||{}))syDirty=true}
     syLast=Date.now();syStatus="ok";
   }catch(e){syStatus=e.message==="login"?"login":"off"}finally{syBusy=false}
   if(syDirty)push();
@@ -1045,7 +1093,32 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act=locTog
   if(!LOCON&&S.loc&&S.loc[SY.email]){delete S.loc[SY.email];S._m=S._m||{tomb:{}};push()}
   render();if(LOCON){toast("اشتراک موقعیت روشن شد");locTick()}else toast("اشتراک موقعیت خاموش شد")},true);
 {const _vm=vMore;vMore=function(){return _vm().replace('<div class="tiles">','<div class="tiles"><button class="tile c4" data-go="family"><span class="ti">📍</span><b>موقعیت خانواده</b><span>'+(LOCON?"اشتراک روشن":"اشتراک خاموش")+'</span></button>')}}
-{const _r=render;render=function(){if(route==="family"&&UNLOCKED){$("#view").innerHTML=vFamily();renderTabs();$("#unitBtn").textContent=U();return}_r()}}
+{const _r=render;render=function(){if(route==="family"&&UNLOCKED){const h=vFamily();if(h!==LASTH){$("#view").innerHTML=h;LASTH=h}renderTabs();$("#unitBtn").textContent=U();return}_r()}}
+
+/* ---------- family notifications ---------- */
+let NSINCE=0;try{NSINCE=+(localStorage.getItem("home-nsince")||0)}catch(e){}
+const NLAB={shop:"🛒 لیست خرید",todo:"✅ کار",tx:"💸 خرج"};
+function familyNews(rem){
+  if(!SY.email)return;let mx=NSINCE;const msgs=[];
+  ["shop","todo","tx"].forEach(k=>(rem[k]||[]).forEach(it=>{const u=it._u||0;if(u>mx)mx=u;
+    if(u>NSINCE&&it.ub&&it.ub!==SY.email&&!(k==="shop"&&it.done)){const n=k==="shop"?it.name+(it.qty?" "+it.qty:""):k==="todo"?it.text:(it.note||it.cat)+" — "+toman(it.amount);msgs.push(`${NLAB[k]} از ${it.ubn||"خانواده"}: ${n}`)}}));
+  if(NSINCE&&msgs.length){toast(msgs[0]+(msgs.length>1?" (+"+fa(msgs.length-1)+")":""));
+    try{const LN=window.Capacitor&&Capacitor.Plugins.LocalNotifications;if(LN&&document.visibilityState!=="visible")LN.schedule({notifications:msgs.slice(0,5).map((m,i)=>({id:900000+(Date.now()%9000)+i,title:"دخل و خرج خانه",body:m}))})}catch(e){}}
+  NSINCE=Math.max(mx,NSINCE||Date.now());try{localStorage.setItem("home-nsince",String(NSINCE))}catch(e){}
+  bgCfg();
+}
+function bgCfg(){try{const BR=window.Capacitor&&Capacitor.Plugins.BackgroundRunner;if(!BR||!SY.home||!SY.code)return;
+  BR.dispatchEvent({label:"ir.dakhlkharj.check",event:"cfg",details:{url:SY.url,key:SY.key,home:SY.home,code:SY.code,me:SY.email||"",since:NSINCE}}).catch(()=>{})}catch(e){}}
+setTimeout(bgCfg,4000);
+/* ---------- on-device OCR (Persian) ---------- */
+let OCRW=null;
+if(window.Tesseract){window.ocrText=async file=>{
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file)});
+  const sc=Math.min(1,1800/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  const g=c.getContext("2d");g.filter="grayscale(1) contrast(1.4)";g.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);
+  if(!OCRW){const base=new URL("ocr/",location.href).href;OCRW=await Tesseract.createWorker(["fas","eng"],1,{workerPath:base+"worker.min.js",corePath:base,langPath:base,gzip:true,workerBlobURL:false})}
+  const {data}=await OCRW.recognize(c);return data.text||"";
+}}
 </script>
 <script>
 /* ---------- Android (Capacitor): local notifications + back button ---------- */
