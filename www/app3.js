@@ -240,6 +240,15 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-nat]
       sh.querySelector("#ok").onclick=async()=>{const pin=enDigits(sh.querySelector("#bp").value);try{const r=getRem();const key=await aesKey(pin,ub64(r.salt));await unseal(key,r);await NAT().bioAuth();lsSet("home-bio",pin);close();render();toast("اثر انگشت فعال شد ✓")}catch(err){sh.querySelector("#be").textContent="پین اشتباه است یا اثر انگشت تأیید نشد"}}})}
 });
 setTimeout(()=>{if(UNLOCKED)smsSync(false)},2500);
+
+/* ---------- instant notifications (foreground service) ---------- */
+const fgsOn=()=>{try{return localStorage.getItem("home-fgs")!=="0"}catch(e){return true}};
+function fgsStart(){const N=NAT();if(!N||!N.startSync)return;if(SY.home&&SY.code&&fgsOn())N.startSync({url:SY.url,key:SY.key,home:SY.home,code:SY.code,me:SY.email||""}).catch(()=>{});else N.stopSync&&N.stopSync().catch(()=>{})}
+function fgsVis(){const N=NAT();if(N&&N.setVisible)N.setVisible({v:document.visibilityState==="visible"}).catch(()=>{})}
+document.addEventListener("visibilitychange",fgsVis);setTimeout(()=>{fgsVis();fgsStart()},4000);
+let _fgsSig="";setInterval(()=>{const g=[SY.home,SY.code,SY.email,fgsOn()].join("|");if(g!==_fgsSig){_fgsSig=g;fgsStart()}},3000);
+{const _nc=nativeCard;nativeCard=function(){if(!NAT())return "";return `<div class="card stack" style="background:var(--t-green)"><b>🔔 اعلان فوری خانواده</b><span class="muted">پیام چت، لیست خرید و کارهای جدید مثل تلگرام همان لحظه با صدا می‌آید، حتی وقتی اپ بسته است. یک اعلان کوچک ثابت در نوار بالای گوشی می‌ماند.</span>${SY.home?`<button class="btn small ${fgsOn()?"ghost":""}" data-fgs style="align-self:flex-start">${fgsOn()?"خاموش کردن":"روشن کردن"}</button>`:`<span class="muted">اول به خانواده وصل شو.</span>`}</div>`+_nc()}}
+document.addEventListener("click",e=>{if(!e.target.closest("[data-fgs]"))return;try{localStorage.setItem("home-fgs",fgsOn()?"0":"1")}catch(x){}fgsStart();render();toast(fgsOn()?"اعلان فوری روشن شد 🔔":"اعلان فوری خاموش شد")});
 /* ---------- family chat ---------- */
 let CH=[],CH_LAST=0,CH_BUSY=false,CH_REPLY=null,CH_REC=null,CH_NSINCE=0,CH_LOADED=false;
 try{CH_NSINCE=+(localStorage.getItem("home-chsince")||0)}catch(e){}
