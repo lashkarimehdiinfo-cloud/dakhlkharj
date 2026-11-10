@@ -68,6 +68,28 @@ jobs:
                 }));
               }
               CapacitorKV.set('since', String(mx || Date.now()));
+              try {
+                var cs = CapacitorKV.get('csince');
+                var csince = cs && cs.value ? +cs.value : 0;
+                if (!csince) { CapacitorKV.set('csince', String(Date.now())); }
+                else {
+                  var cr = await fetch(c.url + '/rest/v1/rpc/chat_peek', {
+                    method: 'POST',
+                    headers: { apikey: c.key, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p_home: c.home, p_code: c.code, p_since: csince })
+                  });
+                  var msgs = (await cr.json()) || [];
+                  var cmx = csince;
+                  msgs.forEach(function (m) { if (m.t > cmx) cmx = m.t; });
+                  var others = msgs.filter(function (m) { return m.ub && m.ub !== c.me; });
+                  if (others.length) {
+                    var last = others[others.length - 1];
+                    var txt = last.kind === 'image' ? '📷 عکس' : last.kind === 'voice' ? '🎤 پیام صوتی' : last.body;
+                    CapacitorNotifications.schedule([{ id: 600000 + (Date.now() % 9000), title: '💬 ' + (last.ubn || 'خانواده') + (others.length > 1 ? ' (' + others.length + ' پیام)' : ''), body: txt || '', scheduleAt: new Date(Date.now() + 1000) }]);
+                  }
+                  CapacitorKV.set('csince', String(cmx));
+                }
+              } catch (e2) {}
               resolve();
             } catch (e) { reject(e); }
           });
@@ -85,9 +107,76 @@ jobs:
       - run: npx cap add android
       - run: npx cap sync android
       - name: Permissions
-        run: sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <application#' android/app/src/main/AndroidManifest.xml
-      - name: Fixed signing key
-        run: mkdir -p ~/.android && cp debug.keystore ~/.android/debug.keystore
+        run: sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: App icon and splash
+        continue-on-error: true
+        run: |
+          python3 -m pip install --quiet pillow || true
+          python3 - <<'PY'
+          import os, glob
+          from PIL import Image, ImageDraw
+          src = Image.open('icon.png').convert('RGBA')
+          R = 'android/app/src/main/res'
+          bg = (245, 243, 238, 255)
+          def placed(size, frac, shape=None):
+              out = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+              base = Image.new('RGBA', (size, size), bg) if shape else Image.new('RGBA', (size, size), (0, 0, 0, 0))
+              ic = src.resize((int(size * frac),) * 2, Image.LANCZOS)
+              base.paste(ic, ((size - ic.width) // 2,) * 2, ic)
+              if not shape:
+                  return base
+              m = Image.new('L', (size, size), 0)
+              d = ImageDraw.Draw(m)
+              if shape == 'round':
+                  d.ellipse([0, 0, size - 1, size - 1], fill=255)
+              else:
+                  d.rounded_rectangle([0, 0, size - 1, size - 1], radius=size // 5, fill=255)
+              out.paste(base, (0, 0), m)
+              return out
+          for dens, s in {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}.items():
+              p = f'{R}/mipmap-{dens}'
+              os.makedirs(p, exist_ok=True)
+              placed(s, 0.84, 'square').save(f'{p}/ic_launcher.png')
+              placed(s, 0.74, 'round').save(f'{p}/ic_launcher_round.png')
+              f = s * 108 // 48
+              placed(f, 0.60).save(f'{p}/ic_launcher_foreground.png')
+          os.makedirs(f'{R}/mipmap-anydpi-v26', exist_ok=True)
+          xml = '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n'
+          for n in ('ic_launcher.xml', 'ic_launcher_round.xml'):
+              open(f'{R}/mipmap-anydpi-v26/{n}', 'w').write(xml)
+          os.makedirs(f'{R}/values', exist_ok=True)
+          open(f'{R}/values/ic_launcher_background.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#F5F3EE</color>\n</resources>\n')
+          for sp in glob.glob(f'{R}/drawable*/splash.png'):
+              w, h = Image.open(sp).size
+              im = Image.new('RGBA', (w, h), bg)
+              k = int(min(w, h) * 0.38)
+              ic = src.resize((k, k), Image.LANCZOS)
+              im.paste(ic, ((w - k) // 2, (h - k) // 2), ic)
+              im.convert('RGB').save(sp)
+          print('icons ok')
+          PY
+      - name: Fixed signing key and version
+        run: |
+          mkdir -p ~/.android && cp debug.keystore ~/.android/debug.keystore
+          sed -i -E "s/versionCode [0-9]+/versionCode $((100 + ${{ github.run_number }}))/" android/app/build.gradle
+          cat >> android/app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  fixedKey {
+                      storeFile file("../../debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+              buildTypes {
+                  debug { signingConfig signingConfigs.fixedKey }
+              }
+          }
+          GRADLE
+          grep -n "versionCode" android/app/build.gradle
+          keytool -list -v -keystore debug.keystore -storepass android | grep -i "SHA256" | head -1
       - name: Native features (SMS, fingerprint, widget)
         run: |
           mkdir -p bak app/src/main/java/ir/dakhlkharj/app android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/drawable
