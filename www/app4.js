@@ -13,7 +13,7 @@
         const day=new Date(now.getFullYear(),now.getMonth(),now.getDate()+k);
         const j=jstr(g2j(day.getFullYear(),day.getMonth()+1,day.getDate()));
         const items=[];
-        S.inst.forEach(it=>{const n=instNext(it);if(n>=0&&instDue(it,n)===j)items.push("قسط "+it.title+": "+toman(it.amount))});
+        S.inst.forEach(it=>{const n=instNext(it);if(n>=0&&instDue(it,n)===j)items.push("قسط "+it.title+": "+toman(instAmt(it,n)))});
         S.todo.forEach(x=>{if(!x.done&&x.due===j)items.push("کار: "+x.text)});
         S.fridge.forEach(f=>{if(f.exp===j)items.push(f.name+" امروز تاریخش تمام می‌شود")});
         items.push(...eventsOnDay(j));
@@ -38,7 +38,7 @@
   schedule();
   if(APP) APP.addListener("backButton",()=>{
     const sh=document.querySelector(".sheet-bg"); if(sh){sh.remove();return}
-    if(route!=="home"){go(["inst","todo","save","report","accounts","settings","cards","family","budgets","bills","cheques","debts","events","chat"].includes(route)?"more":"home");return}
+    if(route!=="home"){go(["inst","todo","save","report","accounts","settings","cards","family","budgets","bills","cheques","debts","events","chat","forecast","loans","deposits","safety"].includes(route)?"more":"home");return}
     APP.exitApp();
   });
   window.Notification=undefined;

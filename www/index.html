@@ -95,7 +95,7 @@ input[type=checkbox]:checked::after{content:"✓";color:var(--brand-ink);font-we
 /* gradient money card */
 .wallet{position:relative;overflow:hidden;border-radius:26px;padding:20px;color:#fff;
   background:linear-gradient(135deg,var(--brand) 0%,var(--brand2) 70%);box-shadow:0 14px 30px color-mix(in srgb,var(--brand) 35%,transparent)}
-.wallet::before,.wallet::after{content:"";position:absolute;border-radius:50%}
+.wallet::before,.wallet::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
 .wallet::before{width:220px;height:220px;left:-60px;top:-90px;background:color-mix(in srgb,var(--saffron) 55%,transparent);opacity:.35}
 .wallet::after{width:150px;height:150px;right:-40px;bottom:-70px;background:#fff;opacity:.08}
 .wallet>*{position:relative}
@@ -152,7 +152,7 @@ input[type=text],input[type=password],input[type=number],select,textarea{font:in
 .recipe{display:flex;gap:12px;align-items:flex-start}
 .recipe .bub{width:54px;height:54px;font-size:28px;border-radius:18px;background:var(--t-saf)}
 .ai{white-space:pre-wrap;font-size:14px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:80;background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:999px;font-size:13px;font-weight:700;box-shadow:var(--shadow)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);width:max-content;max-width:88vw;text-align:center;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:80;background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:999px;font-size:13px;font-weight:700;box-shadow:var(--shadow)}
 .back{display:inline-flex;align-items:center;gap:4px;margin-top:6px}
 .empty{text-align:center;padding:18px 8px;color:var(--muted);font-size:13.5px}
 .empty .ee{font-size:40px;display:block;margin-bottom:4px}
@@ -212,6 +212,7 @@ input[type=text],input[type=password],input[type=number],select,textarea{font:in
 .chrec{display:flex;align-items:center;gap:8px;padding:4px}
 .reactbar{display:flex;justify-content:space-between;gap:4px}.reactbar button{font-size:26px;border:0;background:var(--surface2);border-radius:14px;width:44px;height:48px;cursor:pointer}.reactbar button.on{background:var(--t-green);outline:2px solid var(--brand)}
 body:has(.chatwrap) .fab{display:none}
+.dpick{display:grid;grid-template-columns:1fr 1.4fr 1.1fr;gap:6px}.dpq{margin-top:2px}.dpq .chip{font-size:12px;padding:3px 10px}
 </style>
 
 </head>
