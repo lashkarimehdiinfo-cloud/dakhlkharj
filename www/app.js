@@ -94,7 +94,7 @@ function sample0(){
 }
 function addDays(s,k){const d=jToDate(s);d.setDate(d.getDate()+k);return jstr(g2j(d.getFullYear(),d.getMonth()+1,d.getDate()))}
 let S=null;const KEY="home-budget-v1";
-function blank(){return {name:"مهدی",accounts:[{id:uid(),name:"نقدی",type:"cash",init:0}],tx:[],inst:[],shop:[],todo:[],fridge:[],plan:{},save:[],budgets:[],bills:[],cheques:[],debts:[],recipes:[],events:[],deposits:[]}}
+function blank(){return {name:"مهدی",accounts:[{id:uid(),name:"نقدی",type:"cash",init:0}],tx:[],inst:[],shop:[],todo:[],fridge:[],plan:{},save:[],budgets:[],bills:[],cheques:[],debts:[],recipes:[],events:[],deposits:[],prices:[]}}
 try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
 if(!S)S=sample0();
 let dbRef=null,saveT=null;
@@ -320,7 +320,7 @@ const ICONS={
  kitchen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 10h14M8 6v2M8 13v3"/></svg>',
  more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'};
 const TABS=[["home","خانه"],["money","دخل و خرج"],["shop","خرید"],["kitchen","آشپزخانه"],["more","بیشتر"]];
-function renderTabs(){const cur=["inst","todo","save","report","accounts","settings","cards","family","budgets","bills","cheques","debts","events","chat","forecast","loans","deposits","safety"].includes(route)?"more":route;
+function renderTabs(){const cur=["inst","todo","save","report","accounts","settings","cards","family","budgets","bills","cheques","debts","events","chat","forecast","loans","deposits","safety"].includes(route)?"more":route==="prices"?"shop":route;
   $("#tabs").innerHTML=TABS.map(([k,l])=>`<button class="navb ${cur===k?"on":""}" data-go="${k}" aria-label="${l}">${ICONS[k]}<span>${l}</span></button>`).join("")}
 
 const CAT_E={"سوپرمارکت":"🛒","میوه و سبزی":"🥦","گوشت و مرغ":"🍗","نان":"🍞","رستوران و بیرون‌بر":"🍕","قبض‌ها":"💡","اجاره":"🏠","بنزین و رفت‌وآمد":"⛽","درمان":"💊","پوشاک":"👗","تفریح":"🎡","اقساط":"📆","پس‌انداز":"🐷","سایر":"📦","حقوق":"💼","پاداش":"🎁","فروش":"🏷️","سایر درآمد":"💰"};
@@ -409,8 +409,8 @@ function vMoney(){
 
 function vShop(){
   const open=S.shop.filter(x=>!x.done),done=S.shop.filter(x=>x.done);
-  const row=x=>`<div class="item ${x.done?"done":""}"><input type="checkbox" data-shopt="${x.id}" ${x.done?"checked":""} aria-label="خریده شد">${bub(foodE(x.name),x.name)}<span class="t"><b>${esc(x.name)}</b> <span class="muted">${esc(x.qty||"")}</span></span><button class="icon" data-edit="shop:${x.id}">ویرایش</button><button class="icon" data-del="shop:${x.id}">حذف</button></div>`;
-  return `<div class="row between"><h2><span class="e">🛒</span>لیست خرید</h2><span class="pill ${open.length?"warn":"ok"}">${open.length?fa(open.length)+" مانده":"کامل شد"}</span></div>
+  const row=x=>`<div class="item ${x.done?"done":""}"><input type="checkbox" data-shopt="${x.id}" ${x.done?"checked":""} aria-label="خریده شد">${bub(foodE(x.name),x.name)}<span class="t"><b>${esc(x.name)}</b> <span class="muted">${esc(x.qty||"")}</span>${x.price?`<br><span class="muted">💰 ${toman(x.price)}</span>`:(()=>{const lp=lastPrice(x.name);return lp?`<br><span class="muted">🏷️ دفعه قبل ${toman(lp.price)}</span>`:""})()}</span><button class="icon" data-edit="shop:${x.id}">ویرایش</button><button class="icon" data-del="shop:${x.id}">حذف</button></div>`;
+  return `<div class="row between"><h2><span class="e">🛒</span>لیست خرید</h2><button class="btn small ghost" data-go="prices">🏷️ قیمت‌ها</button><span class="pill ${open.length?"warn":"ok"}">${open.length?fa(open.length)+" مانده":"کامل شد"}</span></div>
   <div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="addshop">+ افزودن</button>${PHOTO()?`<button class="btn saf grow" data-act="photoShop">📸 عکس بگیر</button>`:""}</div>
   ${PHOTO()?`<p class="muted" style="margin-top:0">از لیست دست‌نویس، فاکتور یا خود کالا عکس بگیر؛ اقلام خودکار به لیست اضافه می‌شوند.</p>`:""}
   <div class="card list">${open.length?open.map(row).join(""):empty(done.length?"🎉":"🧺",done.length?"همه را خریدی!":"لیست خالی است.")}</div>
@@ -494,7 +494,7 @@ function vSave(){return (route==="save"?backBtn:"")+`<div class="row between"><h
   <div class="row"><button class="btn small" data-dep="${g.id}">واریز</button><button class="btn small ghost" data-wd="${g.id}">برداشت</button><button class="icon" data-edit="save:${g.id}">ویرایش</button><button class="icon" data-del="save:${g.id}">حذف</button></div></div>`).join(""):`<div class="card muted">یک هدف بساز؛ مثلاً «سفر عید» یا «پول پیش». هر واریز از حساب انتخابی کم می‌شود.</div>`}</div>`}
 function vAccounts(){return backBtn+`<div class="row between"><h2>کارت‌ها و حساب‌ها</h2><button class="btn small" data-act="addacc">+ حساب</button></div>
   <div class="card list">${S.accounts.map(a=>{const ins=S.tx.filter(t=>t.acc===a.id&&t.type==="in").reduce((s,t)=>s+t.amount,0),outs=S.tx.filter(t=>t.acc===a.id&&t.type==="out").reduce((s,t)=>s+t.amount,0);
-  return `<div class="item"><div class="t"><b>${esc(a.name)}</b><br><span class="muted">موجودی ${toman(balance(a))} · <span class="in">واریز ${toman(ins)}</span> · <span class="out">برداشت ${toman(outs)}</span></span></div><button class="icon" data-edit="accounts:${a.id}">ویرایش</button><button class="icon" data-del="accounts:${a.id}">حذف</button></div>`}).join("")||`<p class="muted">حسابی نداری.</p>`}</div>`}
+  return `<div class="item"><div class="t"><b>${esc(a.name)}</b><br><span class="muted">موجودی ${toman(balance(a))} · <span class="in">واریز ${toman(ins)}</span> · <span class="out">برداشت ${toman(outs)}</span></span></div><button class="icon" data-recon="${a.id}">⚖️ تطبیق</button><button class="icon" data-edit="accounts:${a.id}">ویرایش</button><button class="icon" data-del="accounts:${a.id}">حذف</button></div>`}).join("")||`<p class="muted">حسابی نداری.</p>`}</div>`}
 
 function tips(ym){
   const M=monthTx(ym),P=monthTx(ym%100===1?(Math.floor(ym/100)-1)*100+12:ym-1);
@@ -703,7 +703,7 @@ function setPin(){sheet(`<h2 style="margin-top:0">پین ورود سریع</h2><
     if(await passHash(p,ub64(S.auth.hsalt))!==S.auth.hash)return er("رمز اشتباه است");if(!/^\d{4}$/.test(pin))return er("پین باید ۴ رقم باشد");await setRem(p,pin);close();render();toast("پین ذخیره شد 🔐")}})}
 
 /* ---------- budgets, recurring bills, cheques, debts ---------- */
-function ensure(){["budgets","bills","cheques","debts","recipes","events","deposits"].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]})}
+function ensure(){["budgets","bills","cheques","debts","recipes","events","deposits","prices"].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]})}
 const ymNow=()=>monthKey(jstr(todayJ()));
 function catSpent(cat,ym){return S.tx.filter(t=>t.type==="out"&&t.cat===cat&&monthKey(t.date)===(ym||ymNow())).reduce((s,t)=>s+t.amount,0)}
 let BNOTE={};try{BNOTE=JSON.parse(localStorage.getItem("home-bnote")||"{}")}catch(e){}
@@ -779,7 +779,7 @@ function vDebts(){ensure();const open=S.debts.filter(x=>!x.settled);const rem=x=
     <div class="muted">${x.note?esc(x.note)+" · ":""}${x.plan?"برنامه "+fa(x.plan.length)+" قسطی":x.due?"موعد "+jfa(x.due):"بدون موعد"}</div>
     ${x.plan&&!x.settled?`<div class="muted">${planParts(x).map((pp,j)=>`${pp.done?"✅":"⏳"} ${jfa(pp.d)}: ${toman(pp.full)}`).join("<br>")}</div>`:""}
     ${(x.pays||[]).length?`<div class="bar"><i style="width:${Math.min(100,x.pays.reduce((s,p)=>s+p.a,0)/x.amount*100)}%"></i></div><div class="muted">${x.dir==="owe"?"پرداخت‌شده":"دریافت‌شده"} ${toman(x.pays.reduce((s,p)=>s+p.a,0))} · مانده ${toman(Math.max(0,x.amount-x.pays.reduce((s,p)=>s+p.a,0)))}</div>`:""}
-    <div class="row" style="flex-wrap:wrap">${x.settled?`<span class="pill ok">تسویه شد</span>`:`<button class="btn small" data-dpay="${x.id}">${x.dir==="owe"?"پرداخت بخشی":"دریافت بخشی"}</button>${x.dir==="owe"?`<button class="btn small ghost" data-rplan="${x.id}">📅 ${x.plan?"برنامه جدید":"کی پس بدهیم؟"}</button>`:""}<button class="btn small ghost" data-settle="${x.id}">تسویه کامل</button>`}<button class="icon" data-edit="debts:${x.id}">ویرایش</button><button class="icon" data-del="debts:${x.id}">حذف</button></div></div>`).join(""):`<div class="card">${empty("🤝","چیزی ثبت نشده.")}</div>`}</div>`}
+    <div class="row" style="flex-wrap:wrap">${x.settled?`<span class="pill ok">تسویه شد</span>`:`<button class="btn small" data-dpay="${x.id}">${x.dir==="owe"?"پرداخت بخشی":"دریافت بخشی"}</button><button class="btn small ghost" data-rplan="${x.id}">📅 ${x.plan?"برنامه جدید":x.dir==="owe"?"کی پس بدهیم؟":"چند قسطی بگیرم؟"}</button><button class="btn small ghost" data-settle="${x.id}">تسویه کامل</button>`}<button class="icon" data-edit="debts:${x.id}">ویرایش</button><button class="icon" data-del="debts:${x.id}">حذف</button></div></div>`).join(""):`<div class="card">${empty("🤝","چیزی ثبت نشده.")}</div>`}</div>`}
 function debtForm(x={}){form(x.id?"ویرایش":"بدهی یا طلب جدید",[
   {k:"dir",type:"seg",value:x.dir||"owe",options:[["owe","🔻 من بدهکارم"],["owed","🔺 من طلبکارم"]]},
   {k:"person",label:"طرف حساب",type:"text",value:x.person||""},
@@ -1065,33 +1065,72 @@ document.addEventListener("input",e=>{if(e.target.id==="sf_floor"){const v=num(e
 let FC_SKIP=null;
 function planParts(x){const pays=(x.pays||[]).reduce((s,p)=>s+p.a,0);let acc=0;return (x.plan||[]).map(p=>{const st=acc;acc+=p.a;const left=Math.max(0,Math.min(p.a,acc-pays));return {d:p.d,a:left,full:p.a,done:pays>=acc-1,partial:pays>st&&pays<acc}})}
 function freeFor(ym,skipId){FC_SKIP=skipId;try{return forecast(ym).free}finally{FC_SKIP=null}}
-function repayOptions(amount,skipId){const now=ymNow();const months=[...Array(13)].map((_,k)=>ymAdd(now,k));const free=months.map((ym,k)=>{if(k)return freeFor(ym,skipId);FC_SKIP=skipId;try{return Math.max(0,spendable().free)}finally{FC_SKIP=null}});
+function repayOptions(amount,skipId,startK){startK=startK||0;const now=ymNow();const months=[...Array(13)].map((_,k)=>ymAdd(now,startK+k));const free=months.map((ym,k)=>{if(k||startK)return freeFor(ym,skipId);FC_SKIP=skipId;try{return Math.max(0,spendable().free)}finally{FC_SKIP=null}});
   const opts=[1,2,3,4,6].map(n=>{const part=Math.ceil(amount/n/10000)*10000;const sch=[];let budget=free.slice(),i=0;
     for(let p=0;p<n;p++){while(i<months.length&&budget[i]<part)i++;if(i>=months.length)break;sch.push({ym:months[i],a:p===n-1?amount-part*(n-1):part,free:free[i]});budget[i]-=part;i++}
     return {n,part,sch,ok:sch.length===n}});
   let rest=amount,fast=[];for(let i=0;i<months.length&&rest>0;i++){const can=Math.max(0,Math.floor(free[i]*0.8/100000)*100000);if(can<=0)continue;const a=Math.min(rest,can);fast.push({ym:months[i],a});rest-=a}
   return {months,free,opts,fast,fastOk:rest<=0}}
 function repaySheet(x,amountIn){const isNew=!x;const rest=x?x.amount-(x.pays||[]).reduce((s,p)=>s+p.a,0):amountIn;
-  const draw=(sh,amt)=>{const R=repayOptions(amt,x&&x.id);const box=sh.querySelector("#rp_out");
+  const draw=(sh,amt)=>{const sk=+sh.querySelector("#rp_st").value||0;const per=num(sh.querySelector("#rp_m").value)/F();const recv=x&&x.dir==="owed";const R=recv?{opts:[1,2,3,4,6,10,12].map(n=>{const part=Math.ceil(amt/n);return {n,part,ok:true,sch:[...Array(n)].map((_,i)=>({ym:ymAdd(ymNow(),sk+i),a:i===n-1?amt-part*(n-1):part}))}})}:repayOptions(amt,x&&x.id,sk);const box=sh.querySelector("#rp_out");
+    let fixedHTML="";if(per>0){const n=Math.ceil(amt/per);const sch=[...Array(n)].map((_,i)=>({ym:ymAdd(ymNow(),sk+i),a:i===n-1?amt-per*(n-1):per}));const bad=recv?[]:sch.filter(q=>freeFor(q.ym,x&&x.id)<q.a);
+      R.custom={n,sch};fixedHTML=`<div class="card stack" style="box-shadow:none;border:2px solid var(--brand)"><div class="row between"><b>ماهی ${toman(per)} ← ${fa(n)} قسط</b>${bad.length?`<span class="pill bad">${fa(bad.length)} ماه پول کم است</span>`:`<span class="pill ok">ممکن ✓</span>`}</div><div class="muted">از ${ymName(sch[0].ym)} تا ${ymName(sch[n-1].ym)} تمام می‌شود</div>${!isNew?`<button class="btn small" data-rpsave="custom" style="align-self:flex-start">همین برنامه را ثبت کن</button>`:""}</div>`}
+    if(recv){box.innerHTML=`${fixedHTML}<b style="display:block;margin:10px 0 6px">چند قسط پس بگیریم؟</b><div class="stack">${R.opts.map(o=>`<div class="card stack" style="box-shadow:none;border:1.5px solid var(--line)"><b>${o.n===1?"یک‌جا":fa(o.n)+" قسط"} · ${toman(o.part)}${o.n>1?" هر قسط":""}</b><div class="muted">از ${ymName(o.sch[0].ym)} تا ${ymName(o.sch[o.n-1].ym)}</div><button class="btn small" data-rpsave="${o.n}" style="align-self:flex-start">همین برنامه را ثبت کن</button></div>`).join("")}</div><p class="muted">هر قسط که رسید «دریافت بخشی» را بزن تا به حسابت واریز شود. قسط‌ها در پیش‌بینی ماه‌ها جزو درآمد حساب می‌شوند.</p>`}else
     box.innerHTML=`${R.fastOk?`<div class="alert" style="background:var(--t-green);box-shadow:none;cursor:default">⚡<span class="grow"><b>زودترین زمان تسویه:</b> ${R.fast.length===1?"یک‌جا در "+ymName(R.fast[0].ym):fa(R.fast.length)+" قسط تا "+ymName(R.fast[R.fast.length-1].ym)}<br><span class="muted">${R.fast.map(f=>MONTHS[f.ym%100-1]+": "+toman(f.a)).join(" · ")}</span></span></div>`:`<div class="alert" style="background:var(--t-pom);box-shadow:none;cursor:default">⚠️<span class="grow">با پول آزاد ۱۲ ماه آینده کامل پس داده نمی‌شود. خرج‌ها را کم کن یا درآمد را در پیش‌بینی درست وارد کن.</span></div>`}
-    <b style="display:block;margin:10px 0 6px">چند قسط پس بدهیم؟</b>
+    ${fixedHTML}<b style="display:block;margin:10px 0 6px">چند قسط پس بدهیم؟</b>
     <div class="stack">${R.opts.map(o=>`<div class="card stack" style="box-shadow:none;border:1.5px solid ${o.ok?"var(--line)":"var(--t-pom)"}"><div class="row between"><b>${o.n===1?"یک‌جا":fa(o.n)+" قسط"} · ${toman(o.part)}${o.n>1?" هر قسط":""}</b>${o.ok?`<span class="pill ok">ممکن ✓</span>`:`<span class="pill bad">پول نمی‌رسد</span>`}</div>
       ${o.sch.length?`<div class="muted">${o.sch.map(s=>`${MONTHS[s.ym%100-1]}: ${toman(s.a)} <small>(آزاد ${toman(s.free)})</small>`).join("<br>")}</div>`:""}
       ${o.ok&&!isNew?`<button class="btn small" data-rpsave="${o.n}" style="align-self:flex-start">همین برنامه را ثبت کن</button>`:""}</div>`).join("")}</div>
     <p class="muted">بر اساس «پول آزاد آخر ماه» در پیش‌بینی (درآمد منهای اقساط، ثابت‌ها، حاشیه امن و خرج روزمره). برای این ماه از «قابل خرج تا آخر ماه» حساب شده؛ روز پرداخت ماه‌های بعد ۵ام فرض شده.</p>`;
-    sh.querySelectorAll("[data-rpsave]").forEach(b=>b.onclick=()=>{const o=R.opts.find(q=>q.n===+b.dataset.rpsave);const paid=(x.pays||[]).reduce((s,p)=>s+p.a,0);
-      const pd=ym=>ym===ymNow()?jstr(todayJ()):jstr([Math.floor(ym/100),ym%100,5]);x.plan=[...(paid?[{d:jstr(todayJ()),a:paid}]:[]),...o.sch.map(s=>({d:pd(s.ym),a:s.a}))];x.due=o.sch[0]?pd(o.sch[0].ym):x.due;
-      sh.closest(".sheet-bg").remove();save();render();toast("برنامه بازپرداخت ثبت شد ✓")})};
+    sh.querySelectorAll("[data-rpsave]").forEach(b=>b.onclick=()=>{const o=b.dataset.rpsave==="custom"?R.custom:R.opts.find(q=>q.n===+b.dataset.rpsave);const paid=(x.pays||[]).reduce((s,p)=>s+p.a,0);
+      const dd=(jparse(x.due)||[])[2]||5;const pd=ym=>ym===ymNow()&&dd<=todayJ()[2]?jstr(todayJ()):jstr([Math.floor(ym/100),ym%100,Math.min(dd,ym%100<=6?31:ym%100<=11?30:29)]);x.plan=[...(paid?[{d:jstr(todayJ()),a:paid}]:[]),...o.sch.map(s=>({d:pd(s.ym),a:s.a}))];x.due=o.sch[0]?pd(o.sch[0].ym):x.due;
+      sh.closest(".sheet-bg").remove();save();render();toast(x.dir==="owed"?"برنامه دریافت طلب ثبت شد ✓":"برنامه بازپرداخت ثبت شد ✓")})};
   sheet(`<h2 style="margin-top:0">🧮 ${x?(x.dir==="owe"?"پس دادن قرض به ":"طلب از ")+esc(x.person):"ماشین‌حساب قرض"}</h2>
-    <div class="field"><label for="rp_a">مبلغ (${U()})</label><input type="text" id="rp_a" inputmode="decimal" value="${rest?Math.round(rest*F()).toLocaleString("en"):""}" placeholder="مثلاً ۲۰,۰۰۰,۰۰۰"></div><div id="rp_out"></div>`,
-    sh=>{const a=sh.querySelector("#rp_a");moneyInput(a);const go_=()=>{const v=num(a.value)/F();if(v>0)draw(sh,v);else sh.querySelector("#rp_out").innerHTML=""};a.addEventListener("input",()=>{clearTimeout(a._t);a._t=setTimeout(go_,300)});go_()})}
+    <div class="field"><label for="rp_a">مبلغ (${U()})</label><input type="text" id="rp_a" inputmode="decimal" value="${rest?Math.round(rest*F()).toLocaleString("en"):""}" placeholder="مثلاً ۲۰,۰۰۰,۰۰۰"></div>
+    <div class="grid2"><div class="field"><label for="rp_st">شروع ${x&&x.dir==="owed"?"پس گرفتن":"پس دادن"} از</label><select id="rp_st">${[...Array(13)].map((_,k)=>`<option value="${k}">${k===0?"همین ماه":ymName(ymAdd(ymNow(),k))}</option>`).join("")}</select></div>
+    <div class="field"><label for="rp_m">یا ماهی چقدر ${x&&x.dir==="owed"?"بگیرم":"بدهم"}؟ (اختیاری)</label><input type="text" id="rp_m" inputmode="decimal" placeholder="مثلاً ۲,۰۰۰,۰۰۰"></div></div><div id="rp_out"></div>`,
+    sh=>{const a=sh.querySelector("#rp_a");moneyInput(a);const go_=()=>{const v=num(a.value)/F();if(v>0)draw(sh,v);else sh.querySelector("#rp_out").innerHTML=""};a.addEventListener("input",()=>{clearTimeout(a._t);a._t=setTimeout(go_,300)});const m=sh.querySelector("#rp_m");moneyInput(m);m.addEventListener("input",()=>{clearTimeout(m._t);m._t=setTimeout(go_,300)});const st=sh.querySelector("#rp_st");if(x&&x.due){const a=monthKey(x.due),b=ymNow();const k=(Math.floor(a/100)-Math.floor(b/100))*12+a%100-b%100;if(k>0&&k<=12)st.value=String(k)}st.addEventListener("change",go_);go_()})}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-rplan],[data-fx=repayCalc]");if(!t)return;ensure();if(t.dataset.rplan)repaySheet(S.debts.find(x=>x.id===t.dataset.rplan));else repaySheet(null,0)},true);
+
+/* ---------- price book ---------- */
+const pkey=n=>norm(n).replace(/[0-9۰-۹]/g,"");
+function priceHist(name){const k=pkey(name);return (S.prices||[]).filter(p=>pkey(p.name)===k).sort((a,b)=>(jToDate(b.d)||0)-(jToDate(a.d)||0))}
+function lastPrice(name){return priceHist(name)[0]}
+function addPrice(name,price,qty,store){if(!name||!price)return;ensure();S.prices.unshift({id:uid(),name,price,qty:qty||"",store:store||"",d:jstr(todayJ())})}
+function priceSheet(x){const lp=lastPrice(x.name);
+  sheet(`<h2 style="margin-top:0">✅ ${esc(x.name)} خریده شد</h2>${lp?`<p class="muted" style="margin-top:0">دفعه قبل: ${toman(lp.price)}${lp.qty?" برای "+esc(lp.qty):""} · ${jfa(lp.d)}</p>`:""}
+   <div class="field"><label for="pr_p">قیمت (${U()}) — اختیاری</label><input type="text" id="pr_p" inputmode="decimal" placeholder="چقدر خریدی؟"></div>
+   <div class="grid2"><div class="field"><label for="pr_q">مقدار</label><input type="text" id="pr_q" value="${esc(x.qty||"")}"></div><div class="field"><label for="pr_s">فروشگاه</label><input type="text" id="pr_s" value="${esc((S.prices||[])[0]?.store||"")}"></div></div>
+   <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">ثبت</button><button class="btn ghost" id="no">بدون قیمت</button></div>`,
+  (sh,close)=>{const p=sh.querySelector("#pr_p");moneyInput(p);setTimeout(()=>p.focus(),80);sh.querySelector("#no").onclick=close;
+    sh.querySelector("#ok").onclick=()=>{const v=num(p.value)/F();if(v){addPrice(x.name,v,sh.querySelector("#pr_q").value.trim(),sh.querySelector("#pr_s").value.trim());x.price=v;
+      const lp2=lp&&lp.price;toast(lp2?(v>lp2?`📈 ${fa(Math.round((v/lp2-1)*100))}٪ گران‌تر از دفعه قبل`:v<lp2?`📉 ${fa(Math.round((1-v/lp2)*100))}٪ ارزان‌تر از دفعه قبل`:"همان قیمت دفعه قبل"):"قیمت ثبت شد ✓");save();render()}close()}})}
+let prQ="";
+function vPrices(){ensure();const groups={};(S.prices||[]).forEach(p=>{const k=pkey(p.name);(groups[k]=groups[k]||[]).push(p)});
+  const q=norm(prQ);const L=Object.values(groups).map(g=>g.sort((a,b)=>(jToDate(b.d)||0)-(jToDate(a.d)||0))).filter(g=>!q||norm(g[0].name).includes(q)).sort((a,b)=>(jToDate(b[0].d)||0)-(jToDate(a[0].d)||0));
+  return `<button class="btn small ghost back" data-go="shop">→ بازگشت</button><div class="row between"><h2><span class="e">🏷️</span>قیمت اجناس</h2><button class="btn small" data-fx="addPrice">+ قیمت</button></div>
+  <p class="muted" style="margin-top:0">هر بار چیزی از لیست خرید تیک بزنی، قیمتش را می‌پرسد. اینجا آخرین قیمت و گران یا ارزان شدنش را می‌بینی.</p>
+  <input type="text" id="prq" placeholder="🔍 جستجو: مثلاً برنج" value="${esc(prQ)}" autocomplete="off" style="margin-bottom:10px">
+  <div class="stack">${L.length?L.map(g=>{const a=g[0],b=g[1];const ch=b?(a.price/b.price-1)*100:0;
+    return `<div class="card stack">${""}<div class="row">${bub(foodE(a.name),a.name)}<div class="grow"><b>${esc(a.name)}</b>${a.qty?` <span class="muted">${esc(a.qty)}</span>`:""}<br><span class="muted">${jfa(a.d)}${a.store?" · "+esc(a.store):""}</span></div><div style="text-align:left"><b>${toman(a.price)}</b><br>${b?`<span class="pill ${ch>0?"bad":ch<0?"ok":""}">${ch>0?"📈 ":ch<0?"📉 ":""}${fa(Math.abs(Math.round(ch)))}٪</span>`:""}</div></div>
+    ${g.length>1?`<details><summary class="muted" style="cursor:pointer">تاریخچه ${fa(g.length)} خرید</summary><div class="list">${g.map(p=>`<div class="item"><span class="t">${jfa(p.d)}${p.store?" · "+esc(p.store):""}${p.qty?" · "+esc(p.qty):""}</span><b>${toman(p.price)}</b><button class="icon" data-del="prices:${p.id}">حذف</button></div>`).join("")}</div></details>`:`<div class="row"><button class="icon" data-del="prices:${a.id}">حذف</button></div>`}</div>`}).join(""):`<div class="card">${empty("🏷️","هنوز قیمتی ثبت نشده. در لیست خرید وقتی چیزی را تیک می‌زنی، قیمتش را بنویس.")}</div>`}</div>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-fx=addPrice]");if(!t)return;
+  form("🏷️ ثبت قیمت",[{k:"name",label:"جنس",type:"text"},{k:"price",label:"قیمت ("+U()+")",type:"money"},{k:"qty",label:"مقدار",type:"text",ph:"مثلاً ۱ کیلو"},{k:"store",label:"فروشگاه",type:"text"}],o=>{if(!o.name||!o.price)return false;addPrice(o.name,o.price,o.qty,o.store)})},true);
+document.addEventListener("input",e=>{if(e.target.id!=="prq")return;prQ=e.target.value;clearTimeout(window._prq);window._prq=setTimeout(()=>{render();const i=$("#prq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
+/* ---------- reconcile account balance ---------- */
+function reconcile(a){sheet(`<h2 style="margin-top:0">⚖️ تطبیق موجودی «${esc(a.name)}»</h2>
+  <p class="muted" style="margin-top:0">موجودی اپ: <b>${toman(balance(a))}</b>. موجودی واقعی را از همراه‌بانک ببین و اینجا بنویس تا اپ درست شود. تراکنش‌ها دست نمی‌خورند.</p>
+  <div class="field"><label for="rc_v">موجودی واقعی الان (${U()})</label><input type="text" id="rc_v" inputmode="decimal"></div>
+  <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">درست کن</button><button class="btn ghost" id="no">انصراف</button></div>`,
+  (sh,close)=>{const v=sh.querySelector("#rc_v");moneyInput(v);setTimeout(()=>v.focus(),80);sh.querySelector("#no").onclick=close;
+   sh.querySelector("#ok").onclick=()=>{const real=num(v.value)/F();if(!v.value.trim())return;const diff=real-balance(a);a.init=(a.init||0)+diff;close();save();render();toast(diff?`موجودی درست شد (${diff>0?"+":"−"}${toman(Math.abs(diff))})`:"موجودی درست بود ✓")}})}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-recon]");if(!t)return;reconcile(S.accounts.find(a=>a.id===t.dataset.recon))},true);
 
 function render(){
   $("#unitBtn").textContent=U();const hh=new Date().getHours();$("#sunny").textContent=hh<5||hh>=20?"🌙":hh<11?"🌤️":hh<16?"☀️":"🌇";
   $("#hello").innerHTML=`<em>${esc(S.name||"سلام")}</em>، ${greeting()}`;
   const tj=todayJ();$("#today").textContent=`${WDAYS[weekIdx()]} ${fa(tj[2])} ${MONTHS[tj[1]-1]} ${String(tj[0]).replace(/\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d])}`;
-  const V={home:vHome,money:vMoney,shop:vShop,kitchen:vKitchen,more:vMore,inst:vInst,todo:vTodo,save:vSave,report:vReport,accounts:vAccounts,settings:vSettings,cards:vCards,budgets:vBudgets,bills:vBills,cheques:vCheques,debts:vDebts,events:vEvents,forecast:vForecast,loans:vLoans,deposits:vDeposits,safety:vSafety};ensure();if(UNLOCKED){if(!window._pb){window._pb=1;processBills();processSalary();processDeposits()}budgetCheck()}
+  const V={home:vHome,money:vMoney,shop:vShop,kitchen:vKitchen,more:vMore,inst:vInst,todo:vTodo,save:vSave,report:vReport,accounts:vAccounts,settings:vSettings,cards:vCards,budgets:vBudgets,bills:vBills,cheques:vCheques,debts:vDebts,events:vEvents,forecast:vForecast,loans:vLoans,deposits:vDeposits,safety:vSafety,prices:vPrices};ensure();if(UNLOCKED){if(!window._pb){window._pb=1;processBills();processSalary();processDeposits()}budgetCheck()}
   const vh=UNLOCKED?(V[route]||vHome)():"";const vw=$("#view");if(vh!==LASTH){vw.innerHTML=vh;LASTH=vh}vw.classList.toggle("enter",ENTER);if(ENTER)setTimeout(()=>vw.classList.remove("enter"),300);ENTER=false;renderTabs();
 }
 
@@ -1109,7 +1148,7 @@ document.addEventListener("click",async e=>{
   if(d.loc){fLoc=d.loc;render();return}
   if(d.rep){repM=+d.rep;render();return}
   if(d.edit){const[c,id]=d.edit.split(":");const x=find(c,id);({deposits:depositForm2,inst:x=>x&&x.loan?loanForm(x):instForm(x),events:eventForm,tx:txForm,shop:shopForm,fridge:fridgeForm,todo:todoForm,save:saveForm,accounts:accForm,budgets:budgetForm,bills:billForm,cheques:chequeForm,debts:debtForm})[c](x);return}
-  if(d.shopt){const x=find("shop",d.shopt);x.done=!x.done;save();render();if(x.done&&S.shop.every(i=>i.done))party();return}
+  if(d.shopt){const x=find("shop",d.shopt);x.done=!x.done;save();render();if(x.done){priceSheet(x);if(S.shop.every(i=>i.done))party()}return}
   if(d.todot){const x=find("todo",d.todot);x.done=!x.done;save();render();return}
   if(d.finish){const x=find("fridge",d.finish);S.fridge=S.fridge.filter(f=>f!==x);S.shop.unshift({id:uid(),name:x.name,qty:"",done:false});save();render();toast(`${x.name} به لیست خرید رفت`);return}
   if(d.miss){const r=scoreRecipes().find(r=>r.n===d.miss);let k=0;r.miss.forEach(m=>{if(!S.shop.some(s=>norm(s.name)===norm(m))){S.shop.unshift({id:uid(),name:m,qty:"",done:false});k++}});save();render();toast(`${fa(k)} قلم به لیست خرید اضافه شد`);return}
@@ -1141,7 +1180,7 @@ document.addEventListener("click",async e=>{
   else if(a==="photoInvoice"){if(PHOTO())askPhoto("invoice");else toast("عکس‌خوانی در این نمایش در دسترس نیست")}
   else if(a==="photoFridge")askPhoto("fridge");
   else if(a==="toFridge"){const done=S.shop.filter(x=>x.done);done.forEach(x=>S.fridge.unshift({id:uid(),name:x.name,qty:x.qty,loc:"یخچال",exp:""}));S.shop=S.shop.filter(x=>!x.done);save();render();toast(`${fa(done.length)} قلم به موجودی رفت`)}
-  else if(a==="shopExpense"){txForm({},{type:"out",cat:"سوپرمارکت",note:S.shop.filter(x=>x.done).map(x=>x.name).join("، ").slice(0,120)})}
+  else if(a==="shopExpense"){txForm({},{type:"out",cat:"سوپرمارکت",amount:S.shop.filter(x=>x.done).reduce((a,x)=>a+(x.price||0),0)||"",note:S.shop.filter(x=>x.done).map(x=>x.name).join("، ").slice(0,120)})}
   else if(a==="weekShop"){const need=new Set();Object.values(S.plan).forEach(p=>[p.l,p.d].forEach(m=>{const r=allRecipes().find(r=>r.n===m);r&&r.i.forEach(x=>{if(!have(x))need.add(x)})}));
     let k=0;need.forEach(m=>{if(!S.shop.some(s=>norm(s.name)===norm(m))){S.shop.unshift({id:uid(),name:m,qty:"",done:false});k++}});save();render();toast(k?`${fa(k)} قلم به لیست خرید اضافه شد`:"همه مواد را داری یا برنامه خالی است")}
   else if(a==="planAuto"){const R=scoreRecipes();let j=0;for(let i=0;i<7;i++){S.plan[i]=S.plan[i]||{};if(!S.plan[i].l){S.plan[i].l=R[j%R.length].n;j++}if(!S.plan[i].d){S.plan[i].d=R[(j+5)%R.length].n;j++}}save();render();toast("خانه‌های خالی پر شد")}
