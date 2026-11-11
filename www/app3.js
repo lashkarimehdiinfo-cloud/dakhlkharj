@@ -1,7 +1,7 @@
 
 /* ---------- family sync (Supabase) ---------- */
 const SB_URL_DEFAULT="https://jzzjgvqewgtxulgowmiv.supabase.co",SB_KEY_DEFAULT="sb_publishable_p8V9yDoxk9r5GWb5L13zkg_duTfsSbt";
-const SYNC_ARR=["accounts","tx","inst","shop","todo","fridge","save","budgets","bills","cheques","debts","recipes","events"];
+const SYNC_ARR=["accounts","tx","inst","shop","todo","fridge","save","budgets","bills","cheques","debts","recipes","events","deposits","prices"];
 const SKEY="home-budget-sync";
 let SY={};try{SY=JSON.parse(localStorage.getItem(SKEY)||"{}")}catch(e){}
 if(SY.url===undefined)SY.url=SB_URL_DEFAULT;
