@@ -115,9 +115,10 @@ let SAMPLE=null,IMG=false;
 
 /* ---------- derived ---------- */
 const accById=id=>S.accounts.find(a=>a.id===id);
-function balance(acc){return (acc.init||0)+S.tx.filter(t=>t.acc===acc.id).reduce((s,t)=>s+(t.type==="in"?t.amount:-t.amount),0)}
+const isFut=t=>(daysUntil(t.date)||0)>0;
+function balance(acc){return (acc.init||0)+S.tx.filter(t=>t.acc===acc.id&&!isFut(t)).reduce((s,t)=>s+(t.type==="in"?t.amount:-t.amount),0)}
 const monthKey=s=>{const a=jparse(s);return a?a[0]*100+a[1]:0};
-function monthTx(ym){return S.tx.filter(t=>monthKey(t.date)===ym)}
+function monthTx(ym){return S.tx.filter(t=>monthKey(t.date)===ym&&!isFut(t))}
 function instDue(it,i){return addMonthsJ(it.start,i)}
 function instNext(it){for(let i=0;i<it.count;i++)if(!it.paid.includes(i))return i;return -1}
 const STAPLES=["پیاز","سیر","رب گوجه","آرد","زعفران","شکر","کره","گلپر","ادویه"];
@@ -135,6 +136,7 @@ function alerts(){
   S.todo.forEach(t=>{if(t.done||!t.due)return;const d=daysUntil(t.due);if(d!==null&&d<=0)A.push({bad:d<0,t:t.text,s:d<0?"کار عقب افتاده":"کار امروز",go:"todo"})});
   const n=S.shop.filter(x=>!x.done).length;if(n)A.push({t:"لیست خرید",s:`${fa(n)} قلم مانده`,go:"shop"});
   A.push(...eventAlerts(),...extraAlerts());
+  try{const cl=cashLow();if(cl)A.unshift({bad:true,t:"⚠️ تا حقوق پول کم می‌آید",s:`قبل از ${fa(S.salary.day)}ام ${toman(cl.before)} قسط/قبض داری؛ ${toman(cl.gap)} کم است`,go:"forecast"})}catch(e){}
   const p=S.plan[weekIdx()];if(p&&(p.l||p.d))A.push({t:"غذای امروز",s:[p.l&&"ناهار: "+p.l,p.d&&"شام: "+p.d].filter(Boolean).join(" · "),go:"kitchen"});
   return A;
 }
@@ -189,7 +191,8 @@ function txForm(t={},preset={}){
   fields.onMount=sh=>sh.querySelector(".seg").addEventListener("change",()=>{const v=sh.querySelector(".seg .on").dataset.v;const sel=sh.querySelector("#f_cat");sel.innerHTML=(v==="in"?IN_CATS:OUT_CATS).map(c=>`<option>${c}</option>`).join("")});
   form(isNew?"ثبت دخل / خرج":"ویرایش",fields,o=>{if(!o.amount){toast("مبلغ را وارد کن");return false}
     if(!S.accounts.length){toast("اول یک کارت یا حساب بساز");return false}
-    if(isNew)S.tx.unshift({id:uid(),...o,date:o.date||jstr(todayJ())});else Object.assign(t,o);toast(isNew?"ثبت شد":"ذخیره شد")});
+    if(isNew)S.tx.unshift({id:uid(),...o,date:o.date||jstr(todayJ())});else Object.assign(t,o);
+    if((daysUntil(o.date)||0)>0)toast(`🗓 برای ${jfa(o.date)} برنامه‌ریزی شد · تا آن روز از موجودی کم نمی‌شود ولی در «ماه بعد چه خبر؟» حساب شده`);else toast(isNew?"ثبت شد":"ذخیره شد")});
 }
 function accForm(a={}){form(a.id?"ویرایش حساب":"کارت / حساب جدید",[
   {k:"name",label:"نام",type:"text",value:a.name||"",ph:"مثلاً کارت ملت، حساب پس‌انداز"},
@@ -354,7 +357,7 @@ function vHome(){
   return `${S.example?`<div class="banner row between" style="margin-bottom:12px"><span>✨ این‌ها داده‌های نمونه‌اند تا ببینی اپ چطور کار می‌کند.</span><button class="btn small" data-act="wipe" style="white-space:nowrap">شروع از صفر</button></div>`:""}
   <div class="wallet" data-go="money" role="button" tabindex="0" style="cursor:pointer">
     <div class="lab">💳 موجودی همه کارت‌ها و حساب‌ها</div><div class="big">${toman(total)}</div>
-    ${(()=>{const sp=spendable();return `<div class="mini" style="grid-template-columns:1fr 1fr;margin-top:10px"><div><span class="lab">⏳ اقساط و قبض‌های مانده این ماه</span><b>${toman(sp.fixed)}</b></div><div><span class="lab">🛍 قابل خرج تا آخر ماه</span><b style="${sp.free<0?"color:#ffd0d6":""}">${toman(sp.free)}</b></div></div><div class="note">${SAFE().floor?"🛡️ "+toman(SAFE().floor)+" کف موجودی کنار ماند · ":""}روزی حدود ${toman(sp.perDay)} می‌توانی خرج کنی${sp.salaryComing?" · حقوق روز "+fa(S.salary.day)+" واریز می‌شود":""}</div>`})()}
+    ${(()=>{const sp=spendable();return `<div class="mini" style="grid-template-columns:1fr 1fr;margin-top:10px"><div><span class="lab">⏳ اقساط و قبض‌های مانده این ماه</span><b>${toman(sp.fixed)}</b></div><div><span class="lab">🛍 قابل خرج تا آخر ماه</span><b style="${sp.free<0?"color:#ffd0d6":""}">${toman(sp.free)}</b></div></div><div class="note">${SAFE().floor?"🛡️ "+toman(SAFE().floor)+" کف موجودی کنار ماند · ":""}روزی حدود ${toman(sp.perDay)} می‌توانی خرج کنی${sp.salaryComing?" · حقوق روز "+fa(S.salary.day)+" واریز می‌شود":""}${sp.reserve?`<br>📌 ${toman(sp.reserve)} برای قسط‌های اول ماه بعد (قبل از حقوق) کنار ماند`:""}</div>`})()}
     <div class="mini"><div><span class="lab">⬆ درآمد ${MONTHS[ym%100-1]}</span><b>${toman(inc)}</b></div><div><span class="lab">⬇ خرج ${MONTHS[ym%100-1]}</span><b>${toman(out)}</b></div></div>
     ${inc?`<div class="meter"><i style="width:${Math.min(100,out/inc*100)}%;${out>inc?"background:var(--pom)":""}"></i></div><div class="note">${fa(Math.round(out/inc*100))}٪ از درآمد این ماه خرج شده ${out/inc<.7?"— آفرین 👏":out>inc?"— مراقب باش ⚠️":""}</div>`:""}
   </div>
@@ -402,7 +405,7 @@ function vMoney(){
   </div>
   ${groups.length?groups.map(g=>{const dOut=g.items.filter(t=>t.type==="out").reduce((s,t)=>s+t.amount,0);
     return `<div class="row between" style="margin:14px 4px 6px"><b style="font-size:13.5px">${dayLabel(g.d)}</b>${dOut?`<span class="muted">خرج: ${toman(dOut)}</span>`:""}</div>
-    <div class="card list">${g.items.map(t=>`<div class="item">${bub(catE(t.cat),t.cat)}<div class="t"><b>${esc(t.note||t.cat)}</b><br><span class="muted">${esc(t.cat)} · ${t.type==="in"?"به":"از"} ${esc(accById(t.acc)?.name||"—")}</span></div><b class="${t.type==="in"?"in":"out"}" style="white-space:nowrap">${t.type==="in"?"+":"−"}${toman(t.amount)}</b>
+    <div class="card list">${g.items.map(t=>`<div class="item">${bub(catE(t.cat),t.cat)}<div class="t"><b>${esc(t.note||t.cat)}</b>${isFut(t)?` <span class="pill">🗓 برنامه‌ریزی‌شده</span>`:""}<br><span class="muted">${esc(t.cat)} · ${t.type==="in"?"به":"از"} ${esc(accById(t.acc)?.name||"—")}</span></div><b class="${t.type==="in"?"in":"out"}" style="white-space:nowrap">${t.type==="in"?"+":"−"}${toman(t.amount)}</b>
       <span class="row" style="flex-direction:column;gap:0"><button class="icon" data-edit="tx:${t.id}">ویرایش</button><button class="icon" data-del="tx:${t.id}">حذف</button></span></div>`).join("")}</div>`}).join("")
   :`<div class="card">${empty("🧾",S.tx.length?"با این فیلترها چیزی پیدا نشد.":"هنوز چیزی ثبت نشده. با دکمه زرد + اولین خرج یا درآمد را وارد کن.")}</div>`}`;
 }
@@ -864,10 +867,11 @@ function forecast(ym,noSafe){ensure();const L=[];
   let chIn=0;S.cheques.forEach(c=>{if(c.status!=="pending"||monthKey(c.due)!==ym)return;if(c.kind==="out")L.push({k:"cheque",e:"🧾",t:"چک به "+(c.person||""),d:c.due,a:c.amount});else chIn+=c.amount});
   let dbIn=0;S.debts.forEach(x=>{if(x.settled||x.id===FC_SKIP)return;if(Array.isArray(x.plan)&&x.plan.length){planParts(x).forEach((pp,j)=>{if(pp.done||monthKey(pp.d)!==ym)return;if(x.dir==="owe")L.push({k:"debt",e:"🤝",t:`قرض ${x.person} (${fa(j+1)} از ${fa(x.plan.length)})`,d:pp.d,a:pp.a});else dbIn+=pp.a});return}if(!x.due||monthKey(x.due)!==ym)return;const rm=x.amount-(x.pays||[]).reduce((s,p)=>s+p.a,0);if(x.dir==="owe")L.push({k:"debt",e:"🤝",t:"بدهی به "+x.person,d:x.due,a:rm});else dbIn+=rm});
   let depIn=0;(S.deposits||[]).forEach(d=>{if(d.closed||!d.amount)return;const end=d.term?addMonthsJ(d.start,d.term):null;if(d.payout==="end"){if(end&&monthKey(end)===ym)depIn+=depMonthly(d)*d.term}else if(monthKey(d.start)<ym&&(!end||monthKey(end)>=ym))depIn+=depMonthly(d)});
+  let ptIn=0;S.tx.forEach(t=>{if(!isFut(t)||monthKey(t.date)!==ym)return;if(t.type==="out")L.push({k:"plan",e:"🗓",t:"خرج برنامه‌ریزی‌شده: "+(t.note||t.cat),d:t.date,a:t.amount});else ptIn+=t.amount});
   L.sort((a,b)=>(jToDate(a.d)||0)-(jToDate(b.d)||0));
   const fixed=L.reduce((s,x)=>s+x.a,0);
   const bud=(S.budgets||[]).reduce((s,b)=>s+(b.limit||0),0);const daily=S.fcDaily>0?S.fcDaily:(bud||avgDaily());
-  const extraIn=chIn+dbIn+depIn;const afterFixed=income+extraIn-fixed;const safety=noSafe?0:safeMonthly(income);const free=afterFixed-safety-daily;
+  const extraIn=chIn+dbIn+depIn+ptIn;const afterFixed=income+extraIn-fixed;const safety=noSafe?0:safeMonthly(income);const free=afterFixed-safety-daily;
   return {ym,income,extraIn,L,fixed,daily,afterFixed,safety,free,src:S.fcDaily>0?"دستی":bud?"جمع بودجه‌ها":"میانگین ۳ ماه اخیر",isrc:S.fcIncome>0?"دستی":S.salary&&S.salary.amount?"حقوق ثبت‌شده":"میانگین ۳ ماه اخیر"}}
 let fcYm=0;
 function vForecast(){const base=ymAdd(ymNow(),1);const ym=fcYm||base;const f=forecast(ym);
@@ -879,6 +883,8 @@ function vForecast(){const base=ymAdd(ymNow(),1);const ym=fcYm||base;const f=for
   <div class="wallet"><div class="lab">💰 ${ymName(ym)} — بعد از اقساط و خرج‌های ثابت می‌ماند</div><div class="big">${toman(f.afterFixed)}</div>
    <div class="mini"><div><span class="lab">⬆ درآمد پیش‌بینی</span><b>${toman(f.income+f.extraIn)}</b></div><div><span class="lab">⬇ اقساط و ثابت‌ها</span><b>${toman(f.fixed)}</b></div></div>
    ${f.income?`<div class="meter"><i style="width:${Math.min(100,pct)}%;${pct>70?"background:var(--pom)":""}"></i></div><div class="note">${fa(pct)}٪ درآمد صرف اقساط و پرداخت‌های ثابت می‌شود ${pct>50?"⚠️":"👍"}</div>`:""}</div>
+  ${(()=>{const sl=S.salary;if(!sl||!(sl.day>1))return "";const E=f.L.filter(x=>{const q=jparse(x.d);return q&&q[2]<sl.day});if(!E.length)return "";const sum=E.reduce((s,x)=>s+x.a,0);
+    return `<div class="card stack" style="margin-top:12px;border:2px solid var(--t-pom)"><b>⏰ قبل از حقوق (۱ تا ${fa(sl.day-1)} ${MONTHS[ym%100-1]}): ${toman(sum)}</b><div class="muted">${E.map(x=>`${jfa(x.d)} · ${esc(x.t)}: ${toman(x.a)}`).join("<br>")}</div><div class="muted">حقوقت ${fa(sl.day)}ام می‌آید؛ این مبلغ را از حقوق ${MONTHS[ymAdd(ym,-1)%100-1]} کنار بگذار. اپ خودش آن را از «قابل خرج» کم می‌کند.</div></div>`})()}
   <div class="card stack" style="margin-top:12px">${f.safety?`<div class="row between"><span>🛟 حاشیه امن (${fa(SAFE().pct)}٪ درآمد)</span><b class="out">${toman(f.safety)}</b></div>`:""}<div class="row between"><span>🛒 خرج روزمره تخمینی <span class="muted">(${f.src})</span></span><b class="out">${toman(f.daily)}</b></div>
    <div class="row between" style="border-top:1px dashed var(--line);padding-top:8px"><b>✨ پول آزاد آخر ماه</b><b class="${f.free<0?"out":"in"}" style="font-size:20px">${toman(f.free)}</b></div>
    ${f.free<0?`<div class="banner" style="background:var(--t-pom)">⚠️ این ماه ${toman(-f.free)} کم می‌آوری. خرج روزمره را کم کن یا از پس‌انداز بردار.</div>`:f.free>0?`<span class="muted">پیشنهاد: ${toman(Math.round(f.free*.5))} از آن را به پس‌انداز بزن.</span>`:""}</div>
@@ -902,7 +908,7 @@ document.addEventListener("input",e=>{if(e.target.id==="fc_inc"||e.target.id==="
 /* ---------- auto salary, spendable, advisor ---------- */
 function processSalary(){const sl=S.salary;if(!sl||!sl.amount||!sl.day)return;const ym=ymNow(),t=todayJ();
   if(sl.last!==ym&&t[2]>=sl.day){const acc=accById(sl.acc)?sl.acc:S.accounts[0]?.id;const max=t[1]<=6?31:t[1]<=11?30:29;
-    S.tx.unshift({id:uid(),type:"in",amount:sl.amount,cat:"حقوق",acc,date:jstr([t[0],t[1],Math.min(sl.day,max)]),note:"حقوق ماهانه (خودکار)"});sl.last=ym;save();const f=forecast(ym);toast(`💼 حقوق ثبت شد · ${toman(f.fixed)} برای اقساط و ${toman(f.safety)} برای حاشیه امن کنار بگذار`)}}
+    S.tx.unshift({id:uid(),type:"in",amount:sl.amount,cat:"حقوق",acc,date:jstr([t[0],t[1],Math.min(sl.day,max)]),note:"حقوق ماهانه (خودکار)"});sl.last=ym;save();const f=forecast(ym);const en=earlyNext();toast(`💼 حقوق ثبت شد · ${toman(f.fixed)} برای اقساط این ماه${en.sum?" و "+toman(en.sum)+" برای قسط‌های اول ماه بعد":""} و ${toman(f.safety)} برای حاشیه امن کنار بگذار`)}}
 function salaryForm(){const sl=S.salary||{};form("💼 حقوق ماهانه خودکار",[
   {k:"amount",label:"مبلغ حقوق ("+U()+")",type:"money",value:sl.amount||""},
   {k:"day",label:"روز واریز در ماه (۱ تا ۳۱)",type:"int",value:sl.day||1},
@@ -914,12 +920,16 @@ function dueRest(){const ym=ymNow(),L=[];
   (S.bills||[]).forEach(b=>{if(b.last===ym||b.auto&&todayJ()[2]>=b.day)return;L.push({t:b.title,a:b.amount,d:billDue(b)})});
   (S.cheques||[]).forEach(c=>{if(c.status==="pending"&&c.kind==="out"&&monthKey(c.due)===ym)L.push({t:"چک "+(c.person||""),a:c.amount,d:c.due})});
 
+  S.tx.forEach(t=>{if(t.type==="out"&&isFut(t)&&monthKey(t.date)===ym)L.push({t:t.note||t.cat,a:t.amount,d:t.date})});
   (S.debts||[]).forEach(x=>{if(x.settled||x.dir!=="owe"||x.id===FC_SKIP||!Array.isArray(x.plan))return;planParts(x).forEach(pp=>{if(!pp.done&&monthKey(pp.d)===ym)L.push({t:"قرض "+x.person,a:pp.a,d:pp.d})})});
   return L}
 function spendable(){const bal=S.accounts.filter(a=>a.type!=="savings").reduce((s,a)=>s+balance(a),0);const L=dueRest();const fixed=L.reduce((s,x)=>s+x.a,0);
   const t=todayJ();const dim=t[1]<=6?31:t[1]<=11?30:29;const left=Math.max(1,dim-t[2]+1);
   const sl=S.salary;const salaryComing=sl&&sl.amount&&sl.last!==ymNow()&&t[2]<sl.day;
-  const free=bal-fixed-SAFE().floor;return {bal,fixed,L,free,left,perDay:Math.floor(Math.max(0,free)/left),salaryComing,salary:salaryComing?sl.amount:0}}
+  const en=earlyNext();const reserve=salaryComing?0:en.sum;
+  const free=bal-fixed-SAFE().floor-reserve;return {bal,fixed,L,free,left,perDay:Math.floor(Math.max(0,free)/left),salaryComing,salary:salaryComing?sl.amount:0,reserve,early:en}}
+function earlyNext(){const sl=S.salary;if(!sl||!sl.amount||!(sl.day>1))return {sum:0,L:[]};const L=forecast(ymAdd(ymNow(),1),true).L.filter(x=>{const a=jparse(x.d);return a&&a[2]<sl.day});return {sum:L.reduce((s,x)=>s+x.a,0),L}}
+function cashLow(){const sl=S.salary;const sp=spendable();if(!sp.salaryComing)return null;const before=sp.L.filter(x=>{const a=jparse(x.d);return a&&a[2]<sl.day}).reduce((s,x)=>s+x.a,0);const gap=before-sp.bal;return gap>0?{gap,before}:null}
 const ESS=["نان","شیر","ماست","پنیر","تخم","برنج","روغن","مرغ","گوشت","سبزی","میوه","سیب‌زمینی","پیاز","گوجه","حبوبات","عدس","لوبیا","دارو","پوشک","شوینده","مایع","پودر","دستمال","آب","قبض","اجاره","بنزین","شکر","چای","نمک"];
 const LUX=["پیتزا","فست","رستوران","کافه","بستنی","شکلات","پفک","چیپس","نوشابه","کیک","آجیل","لباس","کفش","عطر","ادکلن","لوازم آرایش","اسباب‌بازی","گیم","طلا","موبایل","هدفون","تزئینی","تفریح","سینما"];
 const isEss=n=>ESS.some(k=>norm(n).includes(norm(k)));const isLux=n=>LUX.some(k=>norm(n).includes(norm(k)));
@@ -1083,13 +1093,13 @@ function repaySheet(x,amountIn){const isNew=!x;const rest=x?x.amount-(x.pays||[]
       ${o.ok&&!isNew?`<button class="btn small" data-rpsave="${o.n}" style="align-self:flex-start">همین برنامه را ثبت کن</button>`:""}</div>`).join("")}</div>
     <p class="muted">بر اساس «پول آزاد آخر ماه» در پیش‌بینی (درآمد منهای اقساط، ثابت‌ها، حاشیه امن و خرج روزمره). برای این ماه از «قابل خرج تا آخر ماه» حساب شده؛ روز پرداخت ماه‌های بعد ۵ام فرض شده.</p>`;
     sh.querySelectorAll("[data-rpsave]").forEach(b=>b.onclick=()=>{const o=b.dataset.rpsave==="custom"?R.custom:R.opts.find(q=>q.n===+b.dataset.rpsave);const paid=(x.pays||[]).reduce((s,p)=>s+p.a,0);
-      const pd=ym=>ym===ymNow()?jstr(todayJ()):jstr([Math.floor(ym/100),ym%100,5]);x.plan=[...(paid?[{d:jstr(todayJ()),a:paid}]:[]),...o.sch.map(s=>({d:pd(s.ym),a:s.a}))];x.due=o.sch[0]?pd(o.sch[0].ym):x.due;
+      const dd=(jparse(x.due)||[])[2]||5;const pd=ym=>ym===ymNow()&&dd<=todayJ()[2]?jstr(todayJ()):jstr([Math.floor(ym/100),ym%100,Math.min(dd,ym%100<=6?31:ym%100<=11?30:29)]);x.plan=[...(paid?[{d:jstr(todayJ()),a:paid}]:[]),...o.sch.map(s=>({d:pd(s.ym),a:s.a}))];x.due=o.sch[0]?pd(o.sch[0].ym):x.due;
       sh.closest(".sheet-bg").remove();save();render();toast(x.dir==="owed"?"برنامه دریافت طلب ثبت شد ✓":"برنامه بازپرداخت ثبت شد ✓")})};
   sheet(`<h2 style="margin-top:0">🧮 ${x?(x.dir==="owe"?"پس دادن قرض به ":"طلب از ")+esc(x.person):"ماشین‌حساب قرض"}</h2>
     <div class="field"><label for="rp_a">مبلغ (${U()})</label><input type="text" id="rp_a" inputmode="decimal" value="${rest?Math.round(rest*F()).toLocaleString("en"):""}" placeholder="مثلاً ۲۰,۰۰۰,۰۰۰"></div>
     <div class="grid2"><div class="field"><label for="rp_st">شروع ${x&&x.dir==="owed"?"پس گرفتن":"پس دادن"} از</label><select id="rp_st">${[...Array(13)].map((_,k)=>`<option value="${k}">${k===0?"همین ماه":ymName(ymAdd(ymNow(),k))}</option>`).join("")}</select></div>
     <div class="field"><label for="rp_m">یا ماهی چقدر ${x&&x.dir==="owed"?"بگیرم":"بدهم"}؟ (اختیاری)</label><input type="text" id="rp_m" inputmode="decimal" placeholder="مثلاً ۲,۰۰۰,۰۰۰"></div></div><div id="rp_out"></div>`,
-    sh=>{const a=sh.querySelector("#rp_a");moneyInput(a);const go_=()=>{const v=num(a.value)/F();if(v>0)draw(sh,v);else sh.querySelector("#rp_out").innerHTML=""};a.addEventListener("input",()=>{clearTimeout(a._t);a._t=setTimeout(go_,300)});const m=sh.querySelector("#rp_m");moneyInput(m);m.addEventListener("input",()=>{clearTimeout(m._t);m._t=setTimeout(go_,300)});sh.querySelector("#rp_st").addEventListener("change",go_);go_()})}
+    sh=>{const a=sh.querySelector("#rp_a");moneyInput(a);const go_=()=>{const v=num(a.value)/F();if(v>0)draw(sh,v);else sh.querySelector("#rp_out").innerHTML=""};a.addEventListener("input",()=>{clearTimeout(a._t);a._t=setTimeout(go_,300)});const m=sh.querySelector("#rp_m");moneyInput(m);m.addEventListener("input",()=>{clearTimeout(m._t);m._t=setTimeout(go_,300)});const st=sh.querySelector("#rp_st");if(x&&x.due){const a=monthKey(x.due),b=ymNow();const k=(Math.floor(a/100)-Math.floor(b/100))*12+a%100-b%100;if(k>0&&k<=12)st.value=String(k)}st.addEventListener("change",go_);go_()})}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-rplan],[data-fx=repayCalc]");if(!t)return;ensure();if(t.dataset.rplan)repaySheet(S.debts.find(x=>x.id===t.dataset.rplan));else repaySheet(null,0)},true);
 
 /* ---------- price book ---------- */
