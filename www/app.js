@@ -31,7 +31,7 @@ function addMonthsJ(s,k){const a=jparse(s);let y=a[0],m=a[1]-1+k;y+=Math.floor(m
 const weekIdx=()=>(new Date().getDay()+1)%7;
 
 /* ---------- data ---------- */
-const OUT_CATS=["سوپرمارکت","میوه و سبزی","گوشت و مرغ","نان","رستوران و بیرون‌بر","قبض‌ها","اجاره","بنزین و رفت‌وآمد","درمان","پوشاک","تفریح","اقساط","پس‌انداز","سایر"];
+const OUT_CATS=["سوپرمارکت","میوه و سبزی","گوشت و مرغ","نان","شیرینی و قنادی","عطاری و ادویه","آجیل و خشکبار","بهداشتی و شوینده","لوازم خانه","رستوران و بیرون‌بر","قبض‌ها","اجاره","بنزین و رفت‌وآمد","درمان","پوشاک","تفریح","اقساط","پس‌انداز","سایر"];
 const IN_CATS=["حقوق","پاداش","فروش","سود سپرده","وام","سایر درآمد"];
 const RCATS=[["","همه"],["غذای اصلی","🍲 غذای اصلی"],["سوپ","🥣 سوپ و آش"],["سالاد","🥗 سالاد"],["پیش‌غذا","🥙 پیش‌غذا"],["سس","🥫 سس"],["دسر","🍮 دسر"],["کیک","🍰 کیک"],["شیرینی","🍪 شیرینی"],["تنقلات","🍟 تنقلات"],["نوشیدنی","🥤 نوشیدنی"],["صبحانه","🍳 صبحانه"],["نان","🥖 نان"]];
 const CATE={"سوپ":"🥣","سالاد":"🥗","پیش‌غذا":"🥙","سس":"🥫","دسر":"🍮","کیک":"🍰","شیرینی":"🍪","تنقلات":"🍟","نوشیدنی":"🥤","صبحانه":"🍳","نان":"🥖"};
@@ -43,27 +43,89 @@ const originOf=r=>r.o||(r.c?"غذای من":"ایران");
 let mealCat="",mealOrigin="",mealLimit=60;
 const allRecipes=()=>{const seen=new Set();return [...(Array.isArray(S.recipes)?S.recipes.map(r=>({...r,c:true})):[]),...RECIPES,...RECIPES2,...RECIPES3].filter(r=>{if(seen.has(r.n))return false;seen.add(r.n);return true})};
 let mealOnly=true,mealQ="";
-function recipeSheet(name){const r=scoreRecipes().find(x=>x.n===name);if(!r)return;
-  sheet(`<div class="row between"><h2 style="margin:0">${CATE[catOf(r)]||recE(r.n)} ${esc(r.n)}</h2><span class="pill">${esc(originOf(r))}</span>${r.t?`<span class="pill">⏱ ${esc(r.t)}</span>`:""}</div>
-  <b style="display:block;margin-top:12px">🧺 مواد لازم</b>
-  <div class="list">${r.i.map(x=>`<div class="item">${have(x)?"✅":"❌"}<span class="t ${have(x)?"":"out"}">${esc(x)}</span>${have(x)?`<span class="pill ok">داری</span>`:`<span class="pill bad">نداری</span>`}</div>`).join("")}</div>
+/* ---------- recipe amounts, servings, inventory check ---------- */
+const QL="lazem";
+const QT={"پیاز":[.5,"n"],"تخم‌مرغ":[1,"n"],"گوجه":[1,"n"],"شکر":[5,"g"],"مرغ":[200,"g"],"آرد":[30,"g"],"سیب‌زمینی":[1,"n"],"سیر":[1,"clove"],"برنج":[100,"g"],"شیر":[100,"ml"],"کره":[15,"g"],"پنیر":[40,"g"],"هویج":[.5,"n"],"نان":[1,"n"],"ماست":[75,"g"],"لیمو":[.5,"n"],"گوشت چرخ‌کرده":[100,"g"],"رب گوجه":[1,"tbsp"],"گوشت":[100,"g"],"خامه":[40,"g"],"فلفل دلمه":[.5,"n"],"بادمجان":[1,"n"],"قارچ":[75,"g"],"ماکارونی":[100,"g"],"گردو":[25,"g"],"کلم":[100,"g"],"عدس":[40,"g"],"خیار":[1,"n"],"نخود":[30,"g"],"کاهو":[.25,"n"],"شکلات":[30,"g"],"زعفران":[0,QL],"لوبیا":[30,"g"],"کشک":[50,"g"],"خیارشور":[1,"n"],"سبزی":[50,"g"],"کالباس":[50,"g"],"پودر کاکائو":[10,"g"],"مایونز":[30,"g"],"زنجبیل":[0,QL],"جعفری":[20,"g"],"سوسیس":[75,"g"],"کدو":[1,"n"],"نخود فرنگی":[40,"g"],"دارچین":[0,QL],"سس سویا":[1,"tbsp"],"لپه":[30,"g"],"ماهی":[200,"g"],"میگو":[150,"g"],"ریحان":[20,"g"],"روغن":[0,QL],"نعناع":[10,"g"],"کشمش":[20,"g"],"لوبیا سبز":[75,"g"],"اسفناج":[100,"g"],"وانیل":[0,QL],"سیب":[1,"n"],"مایه خمیر":[3,"g"],"سرکه":[1,"tbsp"],"عسل":[1,"tbsp"],"موز":[1,"n"],"لوبیا قرمز":[30,"g"],"کرفس":[50,"g"],"آلو":[5,"n"],"رشته":[30,"g"],"شوید":[15,"g"],"تن ماهی":[.5,"can"],"ذرت":[50,"g"],"قهوه":[10,"g"],"سس کچاپ":[1,"tbsp"],"نان تورتیا":[1,"n"],"فلفل":[0,QL],"پودر سوخاری":[20,"g"],"زیتون":[30,"g"],"هل":[0,QL],"میوه":[1,"n"],"بستنی":[100,"g"],"لیمو عمانی":[1,"n"],"خرما":[3,"n"],"زرشک":[10,"g"],"باقلا":[50,"g"],"جو":[30,"g"],"رب انار":[1,"tbsp"],"پسته":[10,"g"],"گشنیز":[10,"g"],"آرد برنج":[30,"g"],"فلفل قرمز":[0,QL],"بیسکویت":[30,"g"],"پنیر خامه‌ای":[50,"g"],"ژلاتین":[3,"g"],"روغن زیتون":[1,"tbsp"],"پودر قند":[20,"g"],"سفیده تخم‌مرغ":[1,"n"],"خردل":[1,"tsp"],"بکینگ پودر":[2,"g"],"آووکادو":[.5,"n"],"پاپریکا":[0,QL],"ارده":[1,"tbsp"],"بادام":[15,"g"],"چای":[3,"g"],"نودل":[80,"g"],"بادام زمینی":[20,"g"],"پیازچه":[1,"n"],"نشاسته":[10,"g"],"نودل برنج":[80,"g"],"جوانه":[30,"g"],"گلاب":[1,"tbsp"],"توت‌فرنگی":[75,"g"],"سبزی قورمه":[75,"g"],"سبزی کوکو":[75,"g"],"رشته آش":[30,"g"],"سبزی آش":[75,"g"],"غوره":[30,"g"],"سس مایونز":[30,"g"],"سبزی پلو":[50,"g"],"کدو حلوایی":[150,"g"],"به":[.5,"n"],"تمبر هندی":[15,"g"],"گلپر":[0,QL],"لازانیا":[75,"g"],"پنیر پیتزا":[50,"g"],"رزماری":[0,QL],"پودر بادام":[25,"g"],"ذرت پاپ کورن":[30,"g"],"چیپس تورتیا":[40,"g"],"فلفل هالوپینو":[.5,"n"],"جوش شیرین":[0,QL],"خمیر هزارلا":[75,"g"],"چغندر":[1,"n"],"پنیر فتا":[40,"g"],"خمیر یوفکا":[50,"g"],"عدس قرمز":[40,"g"],"کنجد":[5,"g"],"شیره انگور":[1,"tbsp"],"خمیر کادایف":[50,"g"],"بلغور":[50,"g"],"سماق":[0,QL],"کوسکوس":[60,"g"],"آناناس":[75,"g"],"نان اسپرینگ رول":[3,"n"],"جلبک نوری":[1,"n"],"سبزیجات":[100,"g"],"خمیر میسو":[1,"tbsp"],"توفو":[100,"g"],"جلبک":[5,"g"],"کلم چینی":[100,"g"],"علف لیمو":[0,QL],"شیر نارگیل":[75,"ml"],"خمیر کاری سبز":[1,"tbsp"],"پنیر موزارلا":[50,"g"],"کینوا":[60,"g"],"پرتقال":[1,"n"],"انگور":[75,"g"],"فلفل سیاه":[0,QL],"دوغ":[200,"ml"],"رنگ قرمز":[0,QL],"شیر عسلی":[50,"g"],"پودر ژله":[25,"g"],"بال مرغ":[200,"g"],"سس تند":[0,QL],"نان تست":[2,"n"],"فندق":[15,"g"],"سودا":[150,"ml"],"هلو":[1,"n"],"آلبالو":[75,"g"],"جو دوسر":[40,"g"],"نمک":[0,QL],"زردچوبه":[0,QL],"رب":[1,"tbsp"]};
+const QSW={"شکر":[40,"g"],"آرد":[50,"g"],"کره":[25,"g"],"شیر":[150,"ml"],"خامه":[50,"g"],"برنج":[30,"g"],"پودر کاکائو":[10,"g"]};
+const QDR={"شیر":[200,"ml"],"شکر":[15,"g"],"ماست":[100,"g"]};
+const AVGW={"پیاز":150,"سیب‌زمینی":200,"گوجه":120,"هویج":100,"خیار":100,"بادمجان":250,"فلفل دلمه":150,"لیمو":60,"تخم‌مرغ":60,"سیب":180,"موز":150,"کدو":200,"پرتقال":200,"سیر":50,"کاهو":400,"آووکادو":200,"چغندر":200,"به":300,"نان":250,"خیارشور":40,"هلو":150};
+const findKey=(T,x)=>T[x]?x:Object.keys(T).find(k=>norm(k)===norm(x))||Object.keys(T).find(k=>ingMatch(k,x));
+function ingQ(r,x){if(r.q&&r.q[x])return r.q[x];const c=catOf(r);const T=/دسر|کیک|شیرینی/.test(c)?QSW:/نوشیدنی/.test(c)?QDR:null;
+  if(T&&T[x])return T[x];const k=findKey(QT,x);return k?QT[k]:[0,QL]}
+const fmtNum=v=>fa(Math.round(v*100)/100);
+function fmtAmt(v,u){if(u===QL||!v)return "به میزان لازم";
+  if(u==="g")return v>=1000?fmtNum(Math.round(v/50)*50/1000)+" کیلو":fa(v<20?Math.round(v):Math.round(v/10)*10)+" گرم";
+  if(u==="ml")return v>=1000?fmtNum(Math.round(v/50)*50/1000)+" لیتر":fa(Math.round(v/10)*10)+" میلی‌لیتر"+(v>=125?` (${fmtNum(Math.round(v/125)/2)} لیوان)`:"");
+  const r=Math.max(.5,Math.round(v*2)/2);return fmtNum(r)+" "+({n:"عدد",clove:"حبه",tbsp:"قاشق غذاخوری",tsp:"قاشق چای‌خوری",can:"قوطی"}[u]||"")}
+function needBase(v,u){return u==="g"?{v,b:"g"}:u==="ml"?{v,b:"g"}:u==="n"?{v,b:"n"}:u==="clove"?{v:v*5,b:"g"}:u==="tbsp"?{v:v*15,b:"g"}:u==="tsp"?{v:v*5,b:"g"}:u==="can"?{v,b:"pack"}:null}
+function invParse(f){let t=enDigits(f.qty||"").replace(/٫/g,".").replace(/نیم/g,"0.5 ").trim();if(!t)return null;
+  const m=t.match(/(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+))?\s*(کیلوگرم|کیلو|گرم|لیتر|میلی‌?\s?لیتر|سی\s?سی|عدد|تا|دانه|حبه|شانه|بسته|قوطی|بطری|کارتن|جعبه|کیسه)?/);if(!m)return null;
+  let v=+m[1];if(m[2])v=v/+m[2];const w=m[3]||"";
+  if(/کیلو/.test(w))return {v:v*1000,b:"g",mul:1000,w:"کیلو"};if(w==="گرم")return {v,b:"g",mul:1,w:"گرم"};
+  if(w==="لیتر")return {v:v*1000,b:"g",mul:1000,w:"لیتر"};if(/میلی|سی/.test(w))return {v,b:"g",mul:1,w:"میلی‌لیتر"};
+  if(w==="شانه")return {v:v*30,b:"n",mul:1,w:"عدد"};
+  if(/بسته|قوطی|بطری|کارتن|جعبه|کیسه/.test(w)){const z=enDigits(f.name).match(/(\d+(?:\.\d+)?)\s*(کیلو|گرم|لیتر|میلی|سی\s?سی)/);
+    if(z){const sz=+z[1]*(/کیلو|لیتر/.test(z[2])?1000:1);return {v:v*sz,b:"g",mul:sz,w}}return {v,b:"pack",mul:1,w}}
+  return {v,b:"n",mul:1,w:w==="حبه"?"حبه":"عدد"}}
+function invFind(x){const F=S.fridge.filter(f=>f.loc!=="بهداشتی");return F.find(f=>norm(f.name)===norm(x))||F.find(f=>ingMatch(f.name,x))}
+function ingStatus(r,x,mult){const q=ingQ(r,x);const need=q[0]*mult;const f=invFind(x);const st=stapOn()&&STAPLES.some(s=>norm(s)===norm(x));
+  const o={x,q,need,txt:fmtAmt(need,q[1]),f};
+  if(q[1]===QL||!need)return {...o,st:f||st?"ok":"check"};
+  if(!f)return {...o,st:st?"check":"no",deficit:need};
+  const h=invParse(f);if(!h)return {...o,st:"check"};let nb=needBase(need,q[1]);if(!nb)return {...o,st:"check"};
+  if(nb.b!==h.b){const k=findKey(AVGW,x);if(k&&nb.b==="n"&&h.b==="g")nb={v:nb.v*AVGW[k],b:"g"};else if(k&&nb.b==="g"&&h.b==="n")nb={v:nb.v/AVGW[k],b:"n"};else return {...o,st:"check",h}}
+  const have=h.v,nv=nb.v;return {...o,h,nv,st:have>=nv-1e-9?"ok":"low",deficit:have>=nv?0:need*(1-have/nv)}}
+const servN=()=>{try{return +localStorage.getItem("home-serv")||4}catch(e){return 4}};
+function shopUnitOf(v,u){if(u==="g"||u==="clove"||u==="tbsp"||u==="tsp"){const g=needBase(v,u).v;return g>=1000?[Math.round(g/100)/10,"کیلوگرم"]:[Math.max(50,Math.ceil(g/50)*50),"گرم"]}
+  if(u==="ml")return v>=1000?[Math.round(v/100)/10,"لیتر"]:[Math.max(.25,Math.ceil(v/250)/4*1),"لیتر"];if(u==="can")return [Math.ceil(v),"قوطی"];return [Math.ceil(v),"عدد"]}
+function toShopNeed(s){const [n,unit]=shopUnitOf(s.deficit||s.need||1,s.q[1]);const ex=S.shop.find(i=>!i.done&&ingMatch(i.name,s.x));if(ex)return false;
+  S.shop.unshift({id:uid(),done:false,name:s.x,n,unit,qty:s.q[1]===QL?"":fa(n)+" "+unit,prio:"mid",cat:shopCat(s.x)});return true}
+function cookDeduct(L){const done=[],skip=[];L.forEach(s=>{if(!(s.st==="ok"||s.st==="low")||!s.h||!s.f){if(s.f&&s.q[1]!==QL)skip.push(s.x);return}
+  const rem=s.h.v-Math.min(s.h.v,s.nv);if(rem<=1e-6){if(s.f.min)s.f.qty="0 "+s.h.w;else S.fridge=S.fridge.filter(f=>f.id!==s.f.id);done.push(s.x+" (تمام شد)")}else{const u=Math.round(rem/s.h.mul*10)/10;s.f.qty=fmtNum(u)+" "+s.h.w;done.push(s.x)}});return {done,skip}}
+function recipeSheet(name){const r=scoreRecipes().find(x=>x.n===name);if(!r)return;let m=servN();
+  const body=()=>{const L=r.i.map(x=>ingStatus(r,x,m));const ic={ok:"✅",low:"🟠",check:"⚠️",no:"❌"};const need=L.filter(s=>s.st==="no"||s.st==="low");
+    return {L,html:`<div class="row" style="flex-wrap:wrap;gap:6px;margin:10px 0 4px"><b>👥 برای چند نفر؟</b>${[1,2,3,4,5,7].map(k=>`<button class="chip ${k===m?"on":""}" data-serv="${k}">${fa(k)} نفر</button>`).join("")}</div>
+  <b style="display:block;margin-top:8px">🧺 مواد لازم برای ${fa(m)} نفر</b>
+  <div class="list">${L.map((s,j)=>`<div class="item">${ic[s.st]}<span class="t"><b class="${s.st==="no"?"out":""}">${esc(s.x)}</b> <span class="muted">${esc(s.txt)}</span>${s.f&&s.f.qty?`<br><span class="muted">موجودی: ${esc(s.f.qty)}</span>`:""}</span>
+    ${s.st==="ok"?`<span class="pill ok">داری ✓</span>`:s.st==="check"?`<span class="pill warn">بررسی کن</span>`:`<button class="btn small" data-needone="${j}">🛒 ${s.st==="low"?"کم است؛ تهیه":"نیاز به تهیه"}</button>`}</div>`).join("")}</div>
+  <p class="muted" style="margin:6px 2px">✅ کافی داری · 🟠 کم داری · ⚠️ مقدارش در موجودی مشخص نیست، خودت نگاه کن · ❌ نداری. مقدارها تقریبی‌اند.</p>
   ${r.s&&r.s.length?`<b style="display:block;margin-top:12px">👩‍🍳 طرز تهیه</b><ol style="padding-inline-start:20px;margin:6px 0;line-height:1.9">${r.s.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:`<p class="muted">طرز تهیه ثبت نشده.</p>`}
-  <div class="row" style="flex-wrap:wrap;margin-top:12px">${r.miss.length?`<button class="btn small" data-miss="${esc(r.n)}">🛒 ${fa(r.miss.length)} کمبود به لیست خرید</button>`:""}<button class="btn small ghost" data-plan-pick="${esc(r.n)}">📅 به برنامه هفته</button>${r.c?`<button class="btn small ghost" data-recedit="${esc(r.id)}">ویرایش</button><button class="btn small ghost" data-recdel="${esc(r.id)}" style="color:var(--out)">حذف</button>`:""}</div>`,
-  (sh,close)=>sh.addEventListener("click",e=>{if(e.target.closest("[data-miss],[data-plan-pick],[data-recedit],[data-recdel]"))setTimeout(close,50)}))}
-function recipeForm(r={}){
+  <div class="stack" style="margin-top:12px">${need.length?`<button class="btn small" data-needall="1">🛒 ${fa(need.length)} کمبود (با مقدار) به لیست خرید</button>`:""}
+  <button class="btn small saf" data-cooked="1">🍳 پختم برای ${fa(m)} نفر — از یخچال و کابینت کم کن</button></div>`}};
+  sheet(`<div class="row between"><h2 style="margin:0">${CATE[catOf(r)]||recE(r.n)} ${esc(r.n)}</h2><span class="pill">${esc(originOf(r))}</span>${r.t?`<span class="pill">⏱ ${esc(r.t)}</span>`:""}</div>
+  <div id="rcb"></div>
+  <div class="row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small ghost" data-plan-pick="${esc(r.n)}">📅 به برنامه هفته</button>${r.c?`<button class="btn small ghost" data-recedit="${esc(r.id)}">ویرایش</button><button class="btn small ghost" data-recdel="${esc(r.id)}" style="color:var(--out)">حذف</button>`:""}</div>`,
+  (sh,close)=>{let cur;const draw=()=>{cur=body();sh.querySelector("#rcb").innerHTML=cur.html};draw();
+    sh.addEventListener("click",e=>{const b=e.target.closest("[data-serv],[data-needone],[data-needall],[data-cooked]");
+      if(b){e.stopPropagation();const d=b.dataset;
+        if(d.serv){m=+d.serv;try{localStorage.setItem("home-serv",m)}catch(_){}draw();return}
+        if(d.needone){toast(toShopNeed(cur.L[+d.needone])?"به لیست خرید اضافه شد 🛒":"از قبل در لیست خرید هست");save();draw();return}
+        if(d.needall){let k=0;cur.L.filter(s=>s.st==="no"||s.st==="low").forEach(s=>{if(toShopNeed(s))k++});save();toast(`${fa(k)} قلم با مقدار به لیست خرید رفت 🛒`);draw();return}
+        if(d.cooked){const R=cookDeduct(cur.L);ensure();lowStock();save();close();render();toast(`🍳 نوش جان! ${R.done.length?"کم شد: "+R.done.join("، "):"چیزی کم نشد"}${R.skip.length?" · بررسی کن: "+R.skip.join("، "):""}`);return}}
+      if(e.target.closest("[data-plan-pick],[data-recedit],[data-recdel]"))setTimeout(close,50)})})}
+const RUNITS=[["کیلوگرم","g",1000],["کیلو","g",1000],["گرم","g",1],["میلی‌لیتر","ml",1],["لیتر","ml",1000],["لیوان","ml",250],["پیمانه","ml",250],["قاشق غذاخوری","tbsp",1],["قاشق چای‌خوری","tsp",1],["قاشق","tbsp",1],["حبه","clove",1],["قوطی","can",1],["بسته","can",1],["عدد","n",1],["تا","n",1]];
+function parseIngLine(line,p){const t=enDigits(line).replace(/٫/g,".").trim();const m=t.match(/^(.*?)\s+(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+))?\s*(.*)$/);if(!m)return {name:line.trim()};
+  let v=+m[2];if(m[3])v/=+m[3];const uw=m[4].trim();const U=RUNITS.find(([w])=>uw.startsWith(w));if(uw&&!U)return {name:line.trim()};
+  const [,u,mul]=U||["","n",1];return {name:m[1].trim(),q:[v*mul/(p||4),u]}}
+function recipeForm(r={}){const p0=r.p||4;
+  const lines=(r.i||[]).map(x=>r.q&&r.q[x]&&r.q[x][1]!==QL?x+" "+fmtAmt(r.q[x][0]*p0,r.q[x][1]).replace(/\s*\(.*\)/,"").replace("کیلو","کیلوگرم").replace("کیلوگرمگرم","کیلوگرم"):x).join("\n");
   sheet(`<h2 style="margin-top:0">${r.id?"ویرایش غذا":"🍲 غذای جدید"}</h2><form class="stack" id="rf">
    <div class="field"><label for="r_n">اسم غذا</label><input type="text" id="r_n" value="${esc(r.n||"")}" placeholder="مثلاً خورش کرفس"></div>
-   <div class="field"><label for="r_t">زمان پخت (اختیاری)</label><input type="text" id="r_t" value="${esc(r.t||"")}" placeholder="مثلاً ۲ ساعت"></div>
-   <div class="field"><label for="r_i">مواد لازم (هر کدام یک خط یا با ویرگول)</label><textarea id="r_i" rows="4" placeholder="گوشت&#10;کرفس&#10;پیاز">${esc((r.i||[]).join("\n"))}</textarea></div>
+   <div class="grid2"><div class="field"><label for="r_t">زمان پخت (اختیاری)</label><input type="text" id="r_t" value="${esc(r.t||"")}" placeholder="مثلاً ۲ ساعت"></div>
+   <div class="field"><label for="r_p">این مقدارها برای چند نفر؟</label><input type="text" id="r_p" inputmode="numeric" value="${fa(p0)}"></div></div>
+   <div class="field"><label for="r_i">مواد لازم — هر کدام یک خط، با مقدار</label><textarea id="r_i" rows="6" placeholder="گوشت ۵۰۰ گرم&#10;کرفس ۱ کیلو&#10;پیاز ۲ عدد&#10;رب گوجه ۲ قاشق&#10;نمک">${esc(lines)}</textarea>
+   <span class="muted" style="font-size:12px">واحدها: کیلو، گرم، لیتر، لیوان، قاشق، حبه، قوطی، عدد. بدون مقدار هم می‌شود (به میزان لازم).</span></div>
    <div class="field"><label for="r_s">طرز تهیه (هر مرحله یک خط)</label><textarea id="r_s" rows="6" placeholder="پیاز را سرخ کن&#10;گوشت را اضافه کن…">${esc((r.s||[]).join("\n"))}</textarea></div>
    <div class="row"><button class="btn grow" type="submit">ذخیره</button><button class="btn ghost" type="button" id="r_x">انصراف</button></div></form>`,
   (sh,close)=>{sh.querySelector("#r_x").onclick=close;sh.querySelector("#rf").onsubmit=e=>{e.preventDefault();
-    const n=sh.querySelector("#r_n").value.trim();const i=sh.querySelector("#r_i").value.split(/[\n،,]+/).map(x=>x.trim()).filter(Boolean);
+    const n=sh.querySelector("#r_n").value.trim();const p=num(sh.querySelector("#r_p").value)||4;
+    const P=sh.querySelector("#r_i").value.split(/[\n،]+/).map(x=>x.trim()).filter(Boolean).map(l=>parseIngLine(l,p));const i=P.map(x=>x.name);const q={};P.forEach(x=>{if(x.q)q[x.name]=x.q});
     const st=sh.querySelector("#r_s").value.split(/\n+/).map(x=>x.trim()).filter(Boolean);
     if(!n||!i.length){toast("اسم غذا و مواد لازم را بنویس");return}
-    if(!Array.isArray(S.recipes))S.recipes=[];const o={n,t:sh.querySelector("#r_t").value.trim(),i,s:st};
+    if(!Array.isArray(S.recipes))S.recipes=[];const o={n,t:sh.querySelector("#r_t").value.trim(),i,s:st,q,p};
     if(r.id){const x=S.recipes.find(q=>q.id===r.id);Object.assign(x,o)}else S.recipes.unshift({id:uid(),...o});
     close();save();render();toast("غذا ذخیره شد ✓")}})}
+
 document.addEventListener("click",e=>{if(e.target.closest("[data-miss],[data-plan-pick]"))return;const mc=e.target.closest("[data-mcat],[data-morg],[data-act=mealMore]");if(mc){if(mc.dataset.act==="mealMore")mealLimit+=60;else{if(mc.dataset.mcat!==undefined)mealCat=mc.dataset.mcat;if(mc.dataset.morg!==undefined)mealOrigin=mc.dataset.morg;mealLimit=60}render();return}
   const t=e.target.closest("[data-rec],[data-recedit],[data-recdel],[data-act=addRecipe],[data-act=mealOnly]");if(!t)return;
   if(t.dataset.rec)recipeSheet(t.dataset.rec);
@@ -115,16 +177,17 @@ let SAMPLE=null,IMG=false;
 
 /* ---------- derived ---------- */
 const accById=id=>S.accounts.find(a=>a.id===id);
-function balance(acc){return (acc.init||0)+S.tx.filter(t=>t.acc===acc.id).reduce((s,t)=>s+(t.type==="in"?t.amount:-t.amount),0)}
+const isFut=t=>(daysUntil(t.date)||0)>0;
+function balance(acc){return (acc.init||0)+S.tx.filter(t=>t.acc===acc.id&&!isFut(t)).reduce((s,t)=>s+(t.type==="in"?t.amount:-t.amount),0)}
 const monthKey=s=>{const a=jparse(s);return a?a[0]*100+a[1]:0};
-function monthTx(ym){return S.tx.filter(t=>monthKey(t.date)===ym)}
+function monthTx(ym){return S.tx.filter(t=>monthKey(t.date)===ym&&!isFut(t))}
 function instDue(it,i){return addMonthsJ(it.start,i)}
 function instNext(it){for(let i=0;i<it.count;i++)if(!it.paid.includes(i))return i;return -1}
 const STAPLES=["پیاز","سیر","رب گوجه","آرد","زعفران","شکر","کره","گلپر","ادویه"];
 const stapOn=()=>{try{return localStorage.getItem("home-stap")!=="0"}catch(e){return true}};
 const ingMatch=(a,b)=>{a=norm(a);b=norm(b);if(!a||!b)return false;if(a===b)return true;const [s,l]=a.length<=b.length?[a,b]:[b,a];if(s.length<3)return false;
   if(l.startsWith(s))return !(s==="سیب"&&l.startsWith("سیبزمینی"));if(l.endsWith(s))return !l.startsWith("تخم");return false};
-function have(ing){if(stapOn()&&STAPLES.some(x=>norm(x)===norm(ing)))return true;return S.fridge.some(f=>ingMatch(f.name,ing))}
+function have(ing){if(stapOn()&&STAPLES.some(x=>norm(x)===norm(ing)))return true;return S.fridge.some(f=>f.loc!=="بهداشتی"&&qNum(f)!==0&&ingMatch(f.name,ing))}
 function scoreRecipes(){return allRecipes().map(r=>{const miss=r.i.filter(x=>!have(x));return {...r,miss,score:(r.i.length-miss.length)/r.i.length}}).sort((a,b)=>b.score-a.score||a.miss.length-b.miss.length)}
 function greeting(){const h=new Date().getHours();return h<5?"شب بخیر":h<11?"صبح بخیر":h<16?"ظهر بخیر":h<20?"عصر بخیر":"شب بخیر"}
 function alerts(){
@@ -134,13 +197,30 @@ function alerts(){
   S.fridge.forEach(f=>{if(!f.exp)return;const d=daysUntil(f.exp);if(d!==null&&d<=2)A.push({bad:d<0,t:f.name,s:d<0?"تاریخش گذشته":d===0?"امروز باید مصرف شود":`${fa(d)} روز تا انقضا`,go:"kitchen"})});
   S.todo.forEach(t=>{if(t.done||!t.due)return;const d=daysUntil(t.due);if(d!==null&&d<=0)A.push({bad:d<0,t:t.text,s:d<0?"کار عقب افتاده":"کار امروز",go:"todo"})});
   const n=S.shop.filter(x=>!x.done).length;if(n)A.push({t:"لیست خرید",s:`${fa(n)} قلم مانده`,go:"shop"});
+  S.fridge.filter(isLow).forEach(f=>A.push({bad:true,t:"🔔 "+f.name+" رو به اتمام",s:`مانده ${f.qty||"۰"} — در لیست خرید است`,go:"shop"}));
   A.push(...eventAlerts(),...extraAlerts());
+  try{const cl=cashLow();if(cl)A.unshift({bad:true,t:"⚠️ تا حقوق پول کم می‌آید",s:`قبل از ${fa(S.salary.day)}ام ${toman(cl.before)} قسط/قبض داری؛ ${toman(cl.gap)} کم است`,go:"forecast"})}catch(e){}
   const p=S.plan[weekIdx()];if(p&&(p.l||p.d))A.push({t:"غذای امروز",s:[p.l&&"ناهار: "+p.l,p.d&&"شام: "+p.d].filter(Boolean).join(" · "),go:"kitchen"});
   return A;
 }
 
 /* ---------- ui helpers ---------- */
-let route="home",sub=null,kTab="fridge",fLoc="همه",repM=null,txFilter="all",hM=0,hCat="all",hType="all",hQ="";
+let route="home",sub=null,kTab="fridge",fLoc="همه",invQ="",repM=null,txFilter="all",hM=0,hCat="all",hType="all",hQ="";
+const MENU_SEL="[data-edit],[data-del],[data-finish],[data-loanedit],[data-recon],[data-editcard],[data-delcard],[data-prio]";
+function menuize(root){root.querySelectorAll(".item").forEach(it=>{if(it.querySelector(":scope > .more"))return;const B=[...it.querySelectorAll(".icon")].filter(b=>b.matches(MENU_SEL));if(B.length<2)return;
+  B.forEach(b=>b.classList.add("mhid"));const m=document.createElement("button");m.className="icon more";m.type="button";m.setAttribute("aria-label","گزینه‌ها");m.textContent="⋯";it.appendChild(m)})}
+function iconOf(b){const d=b.dataset;return d.del||d.delcard?"🗑️":d.finish?"✅":d.recon?"⚖️":d.prio?"":"✏️"}
+document.addEventListener("click",e=>{const m=e.target.closest(".item > .more");if(!m)return;e.stopPropagation();e.preventDefault();const it=m.parentElement;const B=[...it.querySelectorAll(".mhid")];
+  const title=(it.querySelector(".t b")||it.querySelector("b"))?.textContent||"";
+  const prio=it.querySelector("[data-prio]");
+  sheet(`<h2 style="margin-top:0">${esc(title)}</h2><div class="stack">${prio?`<div class="seg">${[["high","🔴 فوری"],["mid","عادی"],["low","⚪ اگر شد"]].map(([k,l])=>`<button type="button" data-mp="${k}" class="${(S.shop.find(x=>x.id===prio.dataset.prio)?.prio||"mid")===k?"on":""}">${l}</button>`).join("")}</div>`:""}
+    ${B.filter(b=>!b.dataset.prio).map((b,i)=>`<button class="btn ${b.dataset.del||b.dataset.delcard?"ghost":""}" data-mi="${B.indexOf(b)}" style="${b.dataset.del||b.dataset.delcard?"color:var(--out)":""}">${iconOf(b)} ${esc(b.textContent.trim())}</button>`).join("")}
+    <button class="btn ghost" data-mx="1">بستن</button></div>`,(sh,close)=>{sh.addEventListener("click",ev=>{const q=ev.target.closest("[data-mi],[data-mx],[data-mp]");if(!q)return;
+      if(q.dataset.mx){close();return}
+      if(q.dataset.mp){const x=S.shop.find(x=>x.id===prio.dataset.prio);if(x){x.prio=q.dataset.mp;save();render()}close();return}
+      const b=B[+q.dataset.mi];if(b.dataset.del||b.dataset.delcard){if(!q.dataset.sure){q.dataset.sure=1;q.textContent="🗑️ مطمئنی؟ دوباره بزن";return}b.dataset.armed=1}
+      close();b.click()})})},true);
+new MutationObserver(()=>{const v=document.getElementById("view");if(v)menuize(v)}).observe(document.documentElement,{childList:true,subtree:true});
 function toast(m){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
 let ENTER=false,LASTH="";function go(r,s=null){route=r;sub=s;ENTER=true;render();scrollTo(0,0)}
 function sheet(html,bind){const bg=document.createElement("div");bg.className="sheet-bg";bg.innerHTML=`<div class="sheet" role="dialog">${html}</div>`;
@@ -189,7 +269,8 @@ function txForm(t={},preset={}){
   fields.onMount=sh=>sh.querySelector(".seg").addEventListener("change",()=>{const v=sh.querySelector(".seg .on").dataset.v;const sel=sh.querySelector("#f_cat");sel.innerHTML=(v==="in"?IN_CATS:OUT_CATS).map(c=>`<option>${c}</option>`).join("")});
   form(isNew?"ثبت دخل / خرج":"ویرایش",fields,o=>{if(!o.amount){toast("مبلغ را وارد کن");return false}
     if(!S.accounts.length){toast("اول یک کارت یا حساب بساز");return false}
-    if(isNew)S.tx.unshift({id:uid(),...o,date:o.date||jstr(todayJ())});else Object.assign(t,o);toast(isNew?"ثبت شد":"ذخیره شد")});
+    if(isNew)S.tx.unshift({id:uid(),...o,date:o.date||jstr(todayJ())});else Object.assign(t,o);
+    if((daysUntil(o.date)||0)>0)toast(`🗓 برای ${jfa(o.date)} برنامه‌ریزی شد · تا آن روز از موجودی کم نمی‌شود ولی در «ماه بعد چه خبر؟» حساب شده`);else toast(isNew?"ثبت شد":"ذخیره شد")});
 }
 function accForm(a={}){form(a.id?"ویرایش حساب":"کارت / حساب جدید",[
   {k:"name",label:"نام",type:"text",value:a.name||"",ph:"مثلاً کارت ملت، حساب پس‌انداز"},
@@ -231,11 +312,35 @@ function instForm(it={}){const mode=Array.isArray(it.amts)?(it.mode||"custom"):"
       if(!t||(!c.amount&&M!=="custom")){toast("عنوان و مبلغ را وارد کن");return}
       const amts=buildAmts(M,c);const o={title:t,count:c.count,amount:amts?amts[0]:c.amount,amts:amts||undefined,mode:M,step:M==="step"?{inc:c.inc,incType:c.incType,every:c.every}:undefined,start:g("#i_s").value||jstr(todayJ()),acc:g("#i_acc").value};
       if(!amts){delete o.amts}if(it.id){if(!amts)delete it.amts;Object.assign(it,o)}else S.inst.push({id:uid(),paid:[],...o});close();save();render();toast("قسط ذخیره شد ✓")}})}
-function shopForm(x={}){form(x.id?"ویرایش":"افزودن به لیست خرید",[{k:"name",label:"چی بخریم؟",type:"text",value:x.name||""},{k:"qty",label:"مقدار",type:"text",value:x.qty||"",ph:"مثلاً ۲ کیلو"}],
-  o=>{if(!o.name)return false;if(x.id)Object.assign(x,o);else S.shop.unshift({id:uid(),done:false,...o})})}
+function shopForm(x={}){const f=[{k:"name",label:"چی بخریم؟",type:"text",value:x.name||""},
+  {k:"n",label:"تعداد / مقدار",type:"text",value:x.n?String(x.n):(x.qty&&!x.unit?x.qty:""),ph:"مثلاً ۴"},
+  {k:"unit",label:"واحد",type:"select",value:x.unit||"عدد",options:SUNITS},
+  {k:"prio",type:"seg",value:x.prio||"mid",options:[["high","🔴 فوری"],["mid","عادی"],["low","⚪ اگر شد"]]},
+  {k:"cat",label:"از کجا؟ (دسته)",type:"select",value:x.cat||"auto",options:[["auto","🔎 خودکار از روی اسم"],...SHOP_CATS]}];
+  form(x.id?"ویرایش":"افزودن به لیست خرید",f,o=>{if(!o.name)return false;const n=num(o.n);o.n=n||0;o.qty=n?fa(n)+" "+o.unit:"";
+    if(o.cat==="auto")o.cat=shopCat(o.name);if(x.id)Object.assign(x,o);else S.shop.unshift({id:uid(),done:false,...o})})}
+const SUNITS=["عدد","کیلوگرم","گرم","بسته","لیتر","بطری","قوطی","شانه","کارتن","جعبه","متر","جفت"];
+const SHOP_CATS=["سوپرمارکت","میوه و سبزی","گوشت و مرغ","نان","لبنیات","شیرینی و قنادی","عطاری و ادویه","آجیل و خشکبار","بهداشتی و شوینده","لوازم خانه","دارو","سایر"];
+const SHOP_E={"سوپرمارکت":"🏪","میوه و سبزی":"🥬","گوشت و مرغ":"🥩","نان":"🍞","لبنیات":"🥛","شیرینی و قنادی":"🧁","عطاری و ادویه":"🌿","آجیل و خشکبار":"🥜","بهداشتی و شوینده":"🧴","لوازم خانه":"🏠","دارو":"💊","سایر":"📦"};
+const NOFRIDGE=new Set(["لوازم خانه","سایر"]);
+const CAT_KW=[["شیرینی و قنادی",["شیرینی","کیک","نان خامه","زبان","رولت","باقلوا","گز","سوهان","کلوچه","شکلات"]],["عطاری و ادویه",["زعفران","زردچوبه","دارچین","ادویه","فلفل سیاه","هل","گل گاوزبان","عرق","سماق","نبات","زیره","گلپر","دمنوش","جوشانده","عناب","آویشن"]],["آجیل و خشکبار",["آجیل","پسته","بادام","گردو","فندق","تخمه","کشمش","خرما","برگه","توت خشک"]],["بهداشتی و شوینده",["مایع","پودر لباس","شامپو","صابون","دستمال","پوشک","خمیردندان","مسواک","سفیدکننده","جرم","نوار بهداشتی","کیسه زباله"]],["دارو",["قرص","شربت","دارو","پماد","چسب زخم","ویتامین"]],["میوه و سبزی",["سیب","پرتقال","موز","خیار","گوجه","پیاز","هویج","کاهو","سبزی","لیمو","انار","کدو","بادمجان","فلفل دلمه","کلم","میوه","نارنگی","انگور","هندوانه","خربزه","سیر","قارچ","کیوی","هلو","توت فرنگی"]],["گوشت و مرغ",["گوشت","مرغ","ماهی","میگو","کالباس","سوسیس","جگر","بال","سینه"]],["نان",["نان","سنگک","بربری","لواش","تافتون","باگت"]],["لبنیات",["شیر","ماست","پنیر","دوغ","کره","خامه","کشک"]]];
+function shopCat(n){const m=norm(n);for(const [c,ks] of CAT_KW)if(ks.some(k=>m.includes(norm(k))))return c;return "سوپرمارکت"}
+function locOf(n,cat){const m=norm(n);if(cat==="بهداشتی و شوینده"||cat==="دارو")return "بهداشتی";if(["عطاری و ادویه","آجیل و خشکبار"].includes(cat)||/برنج|عدس|لوبیا|لپه|نخود|ماکارونی|رب|روغن|شکر|چای|نمک|آرد|کنسرو|تن ماهی|قند|حبوبات/.test(m))return "کابینت";if(/گوشت|مرغ|ماهی|میگو|چرخ/.test(m))return "فریزر";return "یخچال"}
+document.addEventListener("input",e=>{if(e.target.id!=="invq")return;invQ=e.target.value;clearTimeout(window._iq);window._iq=setTimeout(()=>{render();const i=document.getElementById("invq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)});
+function shopToFridge(x){const cat=x.cat||shopCat(x.name);if(NOFRIDGE.has(cat)||x.fid)return;const f=S.fridge.find(f=>ingMatch(f.name,x.name));
+  if(f){x.fold=f.qty||"";if(x.qty)f.qty=sumQty(x.fold,x.qty);x.fid=f.id;x.fnew=false}else{const id=uid();S.fridge.unshift({id,name:x.name,qty:x.qty||"",loc:locOf(x.name,cat),exp:""});x.fid=id;x.fnew=true}}
+function sumQty(a,b){const pa=invParse({qty:a||"",name:""}),pb=invParse({qty:b||"",name:""});if(pa&&pb&&pa.w===pb.w&&pa.v>0)return fmtNum(Math.round((pa.v+pb.v)/pb.mul*10)/10)+" "+(pb.w==="کیلو"?"کیلوگرم":pb.w);return b||a}
+function shopUnFridge(x){if(!x.fid)return;if(x.fnew)S.fridge=S.fridge.filter(f=>f.id!==x.fid);else{const f=S.fridge.find(f=>f.id===x.fid);if(f&&x.fold!==undefined)f.qty=x.fold}delete x.fid;delete x.fnew;delete x.fold}
 function fridgeForm(x={}){form(x.id?"ویرایش":"افزودن به موجودی",[{k:"name",label:"نام",type:"text",value:x.name||""},{k:"qty",label:"مقدار",type:"text",value:x.qty||""},
-  {k:"loc",label:"کجا",type:"select",value:x.loc||(fLoc!=="همه"?fLoc:"یخچال"),options:["یخچال","فریزر","کابینت"]},{k:"exp",label:"تاریخ انقضا (اختیاری)",type:"jdate",value:x.exp||""}],
-  o=>{if(!o.name)return false;if(x.id)Object.assign(x,o);else S.fridge.unshift({id:uid(),...o})})}
+  {k:"loc",label:"کجا",type:"select",value:x.loc||(fLoc!=="همه"?fLoc:"یخچال"),options:LOCS},{k:"exp",label:"تاریخ انقضا (اختیاری)",type:"jdate",value:x.exp||""},
+  {k:"min",label:"🔔 هشدار وقتی به این مقدار رسید (اختیاری، به همان واحد)",type:"text",value:x.min?String(x.min):"",ph:"مثلاً ۵ — برای تخم‌مرغ"}],
+  o=>{if(!o.name)return false;o.min=num(o.min)||0;if(x.id){Object.assign(x,o);x.lowAdded=false}else S.fridge.unshift({id:uid(),...o});setTimeout(lowStock,0)})}
+const LOCS=["یخچال","فریزر","کابینت","بهداشتی"];
+const qNum=f=>{const m=enDigits(f.qty||"").replace(/٫/g,".").match(/\d+(?:\.\d+)?/);return m?+m[0]:null};
+const isLow=f=>f.min>0&&qNum(f)!==null&&qNum(f)<=f.min;
+function lowStock(){let k=0;S.fridge.forEach(f=>{if(!isLow(f)){if(f.lowAdded)f.lowAdded=false;return}if(f.lowAdded)return;f.lowAdded=true;
+    const ex=S.shop.find(i=>!i.done&&ingMatch(i.name,f.name));if(ex)ex.prio="high";else S.shop.unshift({id:uid(),name:f.name,qty:"",done:false,prio:"high",cat:shopCat(f.name)});k++});
+  if(k){save();toast(`🔔 ${fa(k)} قلم رو به اتمام بود؛ با اولویت فوری به لیست خرید رفت`)}}
 function todoForm(x={}){form(x.id?"ویرایش کار":"کار جدید",[{k:"text",label:"کار",type:"text",value:x.text||""},{k:"due",label:"موعد (اختیاری)",type:"jdate",value:x.due||""}],
   o=>{if(!o.text)return false;if(x.id)Object.assign(x,o);else S.todo.unshift({id:uid(),done:false,...o})})}
 function saveForm(x={}){form(x.id?"ویرایش هدف":"هدف پس‌انداز",[{k:"title",label:"برای چی؟",type:"text",value:x.title||"",ph:"مثلاً سفر، خرید ماشین"},{k:"target",label:"مبلغ هدف ("+U()+")",type:"money",value:x.target||""}],
@@ -323,9 +428,9 @@ const TABS=[["home","خانه"],["money","دخل و خرج"],["shop","خرید"]
 function renderTabs(){const cur=["inst","todo","save","report","accounts","settings","cards","family","budgets","bills","cheques","debts","events","chat","forecast","loans","deposits","safety"].includes(route)?"more":route==="prices"?"shop":route;
   $("#tabs").innerHTML=TABS.map(([k,l])=>`<button class="navb ${cur===k?"on":""}" data-go="${k}" aria-label="${l}">${ICONS[k]}<span>${l}</span></button>`).join("")}
 
-const CAT_E={"سوپرمارکت":"🛒","میوه و سبزی":"🥦","گوشت و مرغ":"🍗","نان":"🍞","رستوران و بیرون‌بر":"🍕","قبض‌ها":"💡","اجاره":"🏠","بنزین و رفت‌وآمد":"⛽","درمان":"💊","پوشاک":"👗","تفریح":"🎡","اقساط":"📆","پس‌انداز":"🐷","سایر":"📦","حقوق":"💼","پاداش":"🎁","فروش":"🏷️","سایر درآمد":"💰"};
+const CAT_E={"سوپرمارکت":"🛒","شیرینی و قنادی":"🧁","عطاری و ادویه":"🌿","آجیل و خشکبار":"🥜","بهداشتی و شوینده":"🧴","لوازم خانه":"🏠","میوه و سبزی":"🥦","گوشت و مرغ":"🍗","نان":"🍞","رستوران و بیرون‌بر":"🍕","قبض‌ها":"💡","اجاره":"🏠","بنزین و رفت‌وآمد":"⛽","درمان":"💊","پوشاک":"👗","تفریح":"🎡","اقساط":"📆","پس‌انداز":"🐷","سایر":"📦","حقوق":"💼","پاداش":"🎁","فروش":"🏷️","سایر درآمد":"💰"};
 const catE=c=>CAT_E[c]||"📦";
-const FOOD=[["تخم","🥚"],["مرغ","🍗"],["گوشت","🥩"],["ماهی","🐟"],["میگو","🦐"],["نان","🍞"],["برنج","🍚"],["سیب‌زمینی","🥔"],["پیاز","🧅"],["گوجه","🍅"],["سیر","🧄"],["هویج","🥕"],["بادمجان","🍆"],["فلفل","🫑"],["خیار","🥒"],["لیمو","🍋"],["سیب","🍎"],["موز","🍌"],["پرتقال","🍊"],["نارنگی","🍊"],["انگور","🍇"],["هندوانه","🍉"],["انار","🍎"],["توت","🍓"],["ماست","🥛"],["شیر","🥛"],["دوغ","🥛"],["کشک","🥛"],["پنیر","🧀"],["کره","🧈"],["عدس","🫘"],["لوبیا","🫘"],["نخود","🫘"],["لپه","🫘"],["ماکارونی","🍝"],["رشته","🍝"],["قارچ","🍄"],["سبزی","🌿"],["جعفری","🌿"],["کاهو","🥬"],["کلم","🥬"],["چای","☕"],["قهوه","☕"],["قند","🍬"],["شکر","🍬"],["شکلات","🍫"],["بیسکویت","🍪"],["کیک","🍰"],["روغن","🫗"],["نمک","🧂"],["زعفران","🌼"],["گردو","🌰"],["پسته","🥜"],["آب","💧"],["نوشابه","🥤"],["رب","🥫"],["تن","🥫"],["مایع","🧴"],["پودر","🧼"],["دستمال","🧻"],["شامپو","🧴"]];
+const FOOD=[["تخم","🥚"],["مرغ","🍗"],["گوشت","🥩"],["ماهی","🐟"],["میگو","🦐"],["نان","🍞"],["برنج","🍚"],["سیب‌زمینی","🥔"],["پیاز","🧅"],["گوجه","🍅"],["سیر","🧄"],["هویج","🥕"],["بادمجان","🍆"],["فلفل","🫑"],["خیار","🥒"],["لیمو","🍋"],["سیب","🍎"],["موز","🍌"],["پرتقال","🍊"],["نارنگی","🍊"],["انگور","🍇"],["هندوانه","🍉"],["انار","🍎"],["توت","🍓"],["شیرینی","🧁"],["زعفران","🌼"],["ماست","🥛"],["شیر","🥛"],["دوغ","🥛"],["کشک","🥛"],["پنیر","🧀"],["کره","🧈"],["عدس","🫘"],["لوبیا","🫘"],["نخود","🫘"],["لپه","🫘"],["ماکارونی","🍝"],["رشته","🍝"],["قارچ","🍄"],["سبزی","🌿"],["جعفری","🌿"],["کاهو","🥬"],["کلم","🥬"],["چای","☕"],["قهوه","☕"],["قند","🍬"],["شکر","🍬"],["شکلات","🍫"],["بیسکویت","🍪"],["کیک","🍰"],["روغن","🫗"],["نمک","🧂"],["زعفران","🌼"],["گردو","🌰"],["پسته","🥜"],["آب","💧"],["نوشابه","🥤"],["رب","🥫"],["تن","🥫"],["مایع","🧴"],["پودر","🧼"],["دستمال","🧻"],["شامپو","🧴"]];
 const foodE=n=>{const m=norm(n);for(const[k,e]of FOOD)if(m.includes(norm(k)))return e;return "🛍️"};
 const REC_E=[["ماکارونی","🍝"],["املت","🍳"],["کوکو","🥚"],["کتلت","🥚"],["کباب","🍢"],["ماهی","🐟"],["سوپ","🥣"],["آش","🥣"],["عدسی","🥣"],["الویه","🥗"],["مرغ","🍗"],["ته‌چین","🍗"],["بادمجان","🍆"],["میرزا","🍆"],["دلمه","🫑"],["پلو","🍚"]];
 const recE=n=>{for(const[k,e]of REC_E)if(n.includes(k))return e;return "🍲"};
@@ -354,7 +459,7 @@ function vHome(){
   return `${S.example?`<div class="banner row between" style="margin-bottom:12px"><span>✨ این‌ها داده‌های نمونه‌اند تا ببینی اپ چطور کار می‌کند.</span><button class="btn small" data-act="wipe" style="white-space:nowrap">شروع از صفر</button></div>`:""}
   <div class="wallet" data-go="money" role="button" tabindex="0" style="cursor:pointer">
     <div class="lab">💳 موجودی همه کارت‌ها و حساب‌ها</div><div class="big">${toman(total)}</div>
-    ${(()=>{const sp=spendable();return `<div class="mini" style="grid-template-columns:1fr 1fr;margin-top:10px"><div><span class="lab">⏳ اقساط و قبض‌های مانده این ماه</span><b>${toman(sp.fixed)}</b></div><div><span class="lab">🛍 قابل خرج تا آخر ماه</span><b style="${sp.free<0?"color:#ffd0d6":""}">${toman(sp.free)}</b></div></div><div class="note">${SAFE().floor?"🛡️ "+toman(SAFE().floor)+" کف موجودی کنار ماند · ":""}روزی حدود ${toman(sp.perDay)} می‌توانی خرج کنی${sp.salaryComing?" · حقوق روز "+fa(S.salary.day)+" واریز می‌شود":""}</div>`})()}
+    ${(()=>{const sp=spendable();return `<div class="mini" style="grid-template-columns:1fr 1fr;margin-top:10px"><div><span class="lab">⏳ اقساط و قبض‌های مانده این ماه</span><b>${toman(sp.fixed)}</b></div><div><span class="lab">🛍 قابل خرج تا آخر ماه</span><b style="${sp.free<0?"color:#ffd0d6":""}">${toman(sp.free)}</b></div></div><div class="note">${SAFE().floor?"🛡️ "+toman(SAFE().floor)+" کف موجودی کنار ماند · ":""}روزی حدود ${toman(sp.perDay)} می‌توانی خرج کنی${sp.salaryComing?" · حقوق روز "+fa(S.salary.day)+" واریز می‌شود":""}${sp.reserve?`<br>📌 ${toman(sp.reserve)} برای قسط‌های اول ماه بعد (قبل از حقوق) کنار ماند`:""}</div>`})()}
     <div class="mini"><div><span class="lab">⬆ درآمد ${MONTHS[ym%100-1]}</span><b>${toman(inc)}</b></div><div><span class="lab">⬇ خرج ${MONTHS[ym%100-1]}</span><b>${toman(out)}</b></div></div>
     ${inc?`<div class="meter"><i style="width:${Math.min(100,out/inc*100)}%;${out>inc?"background:var(--pom)":""}"></i></div><div class="note">${fa(Math.round(out/inc*100))}٪ از درآمد این ماه خرج شده ${out/inc<.7?"— آفرین 👏":out>inc?"— مراقب باش ⚠️":""}</div>`:""}
   </div>
@@ -402,32 +507,45 @@ function vMoney(){
   </div>
   ${groups.length?groups.map(g=>{const dOut=g.items.filter(t=>t.type==="out").reduce((s,t)=>s+t.amount,0);
     return `<div class="row between" style="margin:14px 4px 6px"><b style="font-size:13.5px">${dayLabel(g.d)}</b>${dOut?`<span class="muted">خرج: ${toman(dOut)}</span>`:""}</div>
-    <div class="card list">${g.items.map(t=>`<div class="item">${bub(catE(t.cat),t.cat)}<div class="t"><b>${esc(t.note||t.cat)}</b><br><span class="muted">${esc(t.cat)} · ${t.type==="in"?"به":"از"} ${esc(accById(t.acc)?.name||"—")}</span></div><b class="${t.type==="in"?"in":"out"}" style="white-space:nowrap">${t.type==="in"?"+":"−"}${toman(t.amount)}</b>
+    <div class="card list">${g.items.map(t=>`<div class="item">${bub(catE(t.cat),t.cat)}<div class="t"><b>${esc(t.note||t.cat)}</b>${isFut(t)?` <span class="pill">🗓 برنامه‌ریزی‌شده</span>`:""}<br><span class="muted">${esc(t.cat)} · ${t.type==="in"?"به":"از"} ${esc(accById(t.acc)?.name||"—")}</span></div><b class="${t.type==="in"?"in":"out"}" style="white-space:nowrap">${t.type==="in"?"+":"−"}${toman(t.amount)}</b>
       <span class="row" style="flex-direction:column;gap:0"><button class="icon" data-edit="tx:${t.id}">ویرایش</button><button class="icon" data-del="tx:${t.id}">حذف</button></span></div>`).join("")}</div>`}).join("")
   :`<div class="card">${empty("🧾",S.tx.length?"با این فیلترها چیزی پیدا نشد.":"هنوز چیزی ثبت نشده. با دکمه زرد + اولین خرج یا درآمد را وارد کن.")}</div>`}`;
 }
 
-function vShop(){
-  const open=S.shop.filter(x=>!x.done),done=S.shop.filter(x=>x.done);
-  const row=x=>`<div class="item ${x.done?"done":""}"><input type="checkbox" data-shopt="${x.id}" ${x.done?"checked":""} aria-label="خریده شد">${bub(foodE(x.name),x.name)}<span class="t"><b>${esc(x.name)}</b> <span class="muted">${esc(x.qty||"")}</span>${x.price?`<br><span class="muted">💰 ${toman(x.price)}</span>`:(()=>{const lp=lastPrice(x.name);return lp?`<br><span class="muted">🏷️ دفعه قبل ${toman(lp.price)}</span>`:""})()}</span><button class="icon" data-edit="shop:${x.id}">ویرایش</button><button class="icon" data-del="shop:${x.id}">حذف</button></div>`;
-  return `<div class="row between"><h2><span class="e">🛒</span>لیست خرید</h2><button class="btn small ghost" data-go="prices">🏷️ قیمت‌ها</button><span class="pill ${open.length?"warn":"ok"}">${open.length?fa(open.length)+" مانده":"کامل شد"}</span></div>
+let shopCatF="all";
+function vShop(){ensure();const PR={high:0,mid:1,low:2};
+  const allOpen=S.shop.filter(x=>!x.done).sort((a,b)=>(PR[a.prio||"mid"]-PR[b.prio||"mid"]));const done=S.shop.filter(x=>x.done);
+  const catOfS=x=>x.cat||shopCat(x.name);const cats=[...new Set(allOpen.map(catOfS))];if(shopCatF!=="all"&&!cats.includes(shopCatF))shopCatF="all";
+  const open=allOpen.filter(x=>shopCatF==="all"||catOfS(x)===shopCatF);
+  const est=allOpen.reduce((s,x)=>{const lp=lastPrice(x.name);return s+(lp?lp.price*(lp.unit&&x.n?x.n:1):0)},0);
+  const row=x=>{const lp=!x.price&&lastPrice(x.name);const pr=x.prio||"mid";return `<div class="item ${x.done?"done":""}"><input type="checkbox" data-shopt="${x.id}" ${x.done?"checked":""} aria-label="خریده شد">${bub(foodE(x.name),x.name)}<span class="t"><b>${esc(x.name)}</b> <span class="muted">${esc(x.qty||"")}</span>${!x.done&&pr!=="mid"?` <span class="pill ${pr==="high"?"bad":""}">${pr==="high"?"🔴 فوری":"⚪ اگر شد"}</span>`:""}
+    ${x.price?`<br><span class="muted">💰 ${x.unitPrice&&x.n>1?toman(x.unitPrice)+" × "+fa(x.n)+" = ":""}${toman(x.price)}</span>`:lp?`<br><span class="muted">🏷️ دفعه قبل ${toman(lp.price)}${lp.unit?" هر "+esc(lp.unit):""}</span>`:""}${x.done&&x.fid?` <span class="muted">· 🧊 در موجودی</span>`:""}</span>${!x.done?`<button class="icon" data-prio="${x.id}">🚦 اولویت: ${pr==="high"?"فوری":pr==="low"?"اگر شد":"عادی"}</button>`:""}<button class="icon" data-edit="shop:${x.id}">ویرایش</button><button class="icon" data-del="shop:${x.id}">حذف</button></div>`};
+  const grouped=shopCatF==="all"&&cats.length>1?cats.map(c=>`<div class="muted" style="margin:10px 6px 4px;font-weight:700">${SHOP_E[c]||"📦"} ${esc(c)}</div><div class="card list">${open.filter(x=>catOfS(x)===c).map(row).join("")}</div>`).join(""):`<div class="card list">${open.length?open.map(row).join(""):empty(done.length?"🎉":"🧺",done.length?"همه را خریدی!":"لیست خالی است.")}</div>`;
+  const sum=done.reduce((s,x)=>s+(x.price||0),0);
+  return `<div class="row between"><h2><span class="e">🛒</span>لیست خرید</h2><button class="btn small ghost" data-go="prices">🏷️ قیمت‌ها</button><span class="pill ${allOpen.length?"warn":"ok"}">${allOpen.length?fa(allOpen.length)+" مانده":"کامل شد"}</span></div>
   <div class="row" style="margin-bottom:10px"><button class="btn grow" data-act="addshop">+ افزودن</button>${PHOTO()?`<button class="btn saf grow" data-act="photoShop">📸 عکس بگیر</button>`:""}</div>
-  ${PHOTO()?`<p class="muted" style="margin-top:0">از لیست دست‌نویس، فاکتور یا خود کالا عکس بگیر؛ اقلام خودکار به لیست اضافه می‌شوند.</p>`:""}
-  <div class="card list">${open.length?open.map(row).join(""):empty(done.length?"🎉":"🧺",done.length?"همه را خریدی!":"لیست خالی است.")}</div>
-  ${done.length?`<h2><span class="e">✅</span>خریده شد</h2><div class="card list">${done.map(row).join("")}</div>
-  <div class="stack" style="margin-top:12px"><button class="btn" data-act="toFridge">🧊 انتقال خریده‌ها به یخچال و کابینت</button><button class="btn ghost" data-act="shopExpense">🧾 ثبت هزینه این خرید</button></div>`:""}`;
+  ${est?`<p class="muted" style="margin-top:0">🧮 تخمین هزینه این لیست با قیمت‌های قبلی: <b>${toman(est)}</b></p>`:""}
+  ${cats.length>1?`<div class="chips" style="margin-bottom:8px"><button class="chip ${shopCatF==="all"?"on":""}" data-shc="all">همه</button>${cats.map(c=>`<button class="chip ${shopCatF===c?"on":""}" data-shc="${esc(c)}">${SHOP_E[c]||""} ${esc(c)}</button>`).join("")}</div>`:""}
+  ${allOpen.length||!done.length?grouped:""}
+  ${done.length?`<h2><span class="e">✅</span>خریده شد${sum?` <span class="muted" style="font-size:14px">· جمع ${toman(sum)}</span>`:""}</h2><div class="card list">${done.map(row).join("")}</div>
+  <p class="muted">🧊 خریده‌ها خودکار به یخچال، فریزر، کابینت یا بهداشتی رفتند.</p>
+  <div class="stack" style="margin-top:6px"><button class="btn" data-act="shopExpense">🧾 ثبت هزینه این خرید${sum?" ("+toman(sum)+")":""}</button><button class="btn ghost" data-act="clearDone">🧹 پاک کردن خریده‌ها از لیست</button></div>`:""}`;
 }
+document.addEventListener("click",e=>{const b=e.target.closest("[data-prio],[data-shc]");if(!b)return;e.stopPropagation();if(b.dataset.shc){shopCatF=b.dataset.shc;render();return}
+  const x=S.shop.find(q=>q.id===b.dataset.prio);if(!x)return;x.prio={mid:"high",high:"low",low:"mid"}[x.prio||"mid"];save();render()},true);
 
 function vKitchen(){
   const tab=`<h2><span class="e">🍳</span>آشپزخانه</h2><div class="seg" style="margin-bottom:12px"><button class="${kTab==="fridge"?"on":""}" data-kt="fridge">🧊 موجودی</button><button class="${kTab==="meals"?"on":""}" data-kt="meals">🍲 چی بپزم؟</button><button class="${kTab==="plan"?"on":""}" data-kt="plan">📅 هفته</button></div>`;
   if(kTab==="fridge"){
-    const items=S.fridge.filter(f=>fLoc==="همه"||f.loc===fLoc);const LE={"همه":"🏠","یخچال":"🧊","فریزر":"❄️","کابینت":"🗄️"};
-    return tab+`<div class="chips">${["همه","یخچال","فریزر","کابینت"].map(l=>`<button class="chip ${fLoc===l?"on":""}" data-loc="${l}">${LE[l]} ${l}</button>`).join("")}</div>
+    const fq=norm(invQ);const items=S.fridge.filter(f=>(fLoc==="همه"?f.loc!=="بهداشتی"||fq:f.loc===fLoc)&&(!fq||norm(f.name).includes(fq))).sort((a,b)=>(isLow(b)?1:0)-(isLow(a)?1:0));const LE={"همه":"🏠","یخچال":"🧊","فریزر":"❄️","کابینت":"🗄️","بهداشتی":"🧴"};const nLow=S.fridge.filter(isLow).length;
+    return tab+`<input type="text" id="invq" placeholder="🔍 جستجو در یخچال، فریزر، کابینت و بهداشتی" value="${esc(invQ)}" autocomplete="off" style="margin-bottom:8px">
+    ${nLow?`<div class="banner" style="margin-bottom:8px">🔔 ${fa(nLow)} قلم رو به اتمام است و در لیست خرید (فوری) گذاشته شد.</div>`:""}
+    <div class="chips">${["همه",...LOCS].map(l=>`<button class="chip ${fLoc===l?"on":""}" data-loc="${l}">${LE[l]} ${l}</button>`).join("")}</div>
     <div class="row" style="margin:12px 0"><button class="btn grow" data-act="addfridge">+ افزودن</button>${PHOTO()?`<button class="btn saf grow" data-act="photoFridge">📸 عکس از یخچال</button>`:""}</div>
     <div class="card list">${items.length?items.map(f=>{const d=f.exp?daysUntil(f.exp):null;
-      return `<div class="item">${bub(foodE(f.name),f.name)}<div class="t"><b>${esc(f.name)}</b> <span class="muted">${esc(f.qty||"")}</span><br><span class="pill">${LE[f.loc]||""} ${esc(f.loc)}</span> ${d!==null?`<span class="pill ${d<0?"bad":d<=2?"warn":"ok"}">${d<0?"تاریخ گذشته":d===0?"امروز":fa(d)+" روز مانده"}</span>`:""}</div>
+      return `<div class="item">${bub(foodE(f.name),f.name)}<div class="t"><b>${esc(f.name)}</b> <span class="muted">${esc(f.qty||"")}</span><br><span class="pill">${LE[f.loc]||""} ${esc(f.loc)}</span>${f.min?` <span class="pill ${isLow(f)?"bad":""}">🔔 ${isLow(f)?"رو به اتمام":"هشدار در "+fa(f.min)}</span>`:""} ${d!==null?`<span class="pill ${d<0?"bad":d<=2?"warn":"ok"}">${d<0?"تاریخ گذشته":d===0?"امروز":fa(d)+" روز مانده"}</span>`:""}</div>
       <button class="icon" data-finish="${f.id}">تمام شد</button><button class="icon" data-edit="fridge:${f.id}">ویرایش</button><button class="icon" data-del="fridge:${f.id}">حذف</button></div>`}).join(""):empty("🧊","چیزی ثبت نشده. مواد یخچال، فریزر و کابینت را اضافه کن تا پیشنهاد غذا بگیری.")}</div>
-    <p class="muted">«تمام شد» آن قلم را از موجودی برمی‌دارد و به لیست خرید اضافه می‌کند.</p>`;
+    <p class="muted">«تمام شد» آن قلم را به لیست خرید می‌برد. با «ویرایش» برای چیزهای ضروری (تخم‌مرغ، نان، پوشک…) «هشدار» بگذار تا وقتی کم شد خبر بدهد. وسایل بهداشتی در «🧴 بهداشتی» جدا هستند و در پیشنهاد غذا حساب نمی‌شوند.</p>`;
   }
   if(kTab==="meals"){
     const q=norm(mealQ);const sugg=r=>r.miss.length<=1&&r.i.length-r.miss.length>=Math.min(2,r.i.length);const R0=scoreRecipes().filter(r=>(!mealCat||catOf(r)===mealCat)&&(!mealOrigin||(mealOrigin==="ir"?originOf(r)==="ایران"||r.c:originOf(r)!=="ایران"&&!r.c))&&(q?norm(r.n+r.i.join("")+originOf(r)).includes(q):(!mealOnly||sugg(r))));const R=R0.slice(0,mealLimit);const nS=scoreRecipes().filter(sugg).length;
@@ -864,10 +982,11 @@ function forecast(ym,noSafe){ensure();const L=[];
   let chIn=0;S.cheques.forEach(c=>{if(c.status!=="pending"||monthKey(c.due)!==ym)return;if(c.kind==="out")L.push({k:"cheque",e:"🧾",t:"چک به "+(c.person||""),d:c.due,a:c.amount});else chIn+=c.amount});
   let dbIn=0;S.debts.forEach(x=>{if(x.settled||x.id===FC_SKIP)return;if(Array.isArray(x.plan)&&x.plan.length){planParts(x).forEach((pp,j)=>{if(pp.done||monthKey(pp.d)!==ym)return;if(x.dir==="owe")L.push({k:"debt",e:"🤝",t:`قرض ${x.person} (${fa(j+1)} از ${fa(x.plan.length)})`,d:pp.d,a:pp.a});else dbIn+=pp.a});return}if(!x.due||monthKey(x.due)!==ym)return;const rm=x.amount-(x.pays||[]).reduce((s,p)=>s+p.a,0);if(x.dir==="owe")L.push({k:"debt",e:"🤝",t:"بدهی به "+x.person,d:x.due,a:rm});else dbIn+=rm});
   let depIn=0;(S.deposits||[]).forEach(d=>{if(d.closed||!d.amount)return;const end=d.term?addMonthsJ(d.start,d.term):null;if(d.payout==="end"){if(end&&monthKey(end)===ym)depIn+=depMonthly(d)*d.term}else if(monthKey(d.start)<ym&&(!end||monthKey(end)>=ym))depIn+=depMonthly(d)});
+  let ptIn=0;S.tx.forEach(t=>{if(!isFut(t)||monthKey(t.date)!==ym)return;if(t.type==="out")L.push({k:"plan",e:"🗓",t:"خرج برنامه‌ریزی‌شده: "+(t.note||t.cat),d:t.date,a:t.amount});else ptIn+=t.amount});
   L.sort((a,b)=>(jToDate(a.d)||0)-(jToDate(b.d)||0));
   const fixed=L.reduce((s,x)=>s+x.a,0);
   const bud=(S.budgets||[]).reduce((s,b)=>s+(b.limit||0),0);const daily=S.fcDaily>0?S.fcDaily:(bud||avgDaily());
-  const extraIn=chIn+dbIn+depIn;const afterFixed=income+extraIn-fixed;const safety=noSafe?0:safeMonthly(income);const free=afterFixed-safety-daily;
+  const extraIn=chIn+dbIn+depIn+ptIn;const afterFixed=income+extraIn-fixed;const safety=noSafe?0:safeMonthly(income);const free=afterFixed-safety-daily;
   return {ym,income,extraIn,L,fixed,daily,afterFixed,safety,free,src:S.fcDaily>0?"دستی":bud?"جمع بودجه‌ها":"میانگین ۳ ماه اخیر",isrc:S.fcIncome>0?"دستی":S.salary&&S.salary.amount?"حقوق ثبت‌شده":"میانگین ۳ ماه اخیر"}}
 let fcYm=0;
 function vForecast(){const base=ymAdd(ymNow(),1);const ym=fcYm||base;const f=forecast(ym);
@@ -879,6 +998,8 @@ function vForecast(){const base=ymAdd(ymNow(),1);const ym=fcYm||base;const f=for
   <div class="wallet"><div class="lab">💰 ${ymName(ym)} — بعد از اقساط و خرج‌های ثابت می‌ماند</div><div class="big">${toman(f.afterFixed)}</div>
    <div class="mini"><div><span class="lab">⬆ درآمد پیش‌بینی</span><b>${toman(f.income+f.extraIn)}</b></div><div><span class="lab">⬇ اقساط و ثابت‌ها</span><b>${toman(f.fixed)}</b></div></div>
    ${f.income?`<div class="meter"><i style="width:${Math.min(100,pct)}%;${pct>70?"background:var(--pom)":""}"></i></div><div class="note">${fa(pct)}٪ درآمد صرف اقساط و پرداخت‌های ثابت می‌شود ${pct>50?"⚠️":"👍"}</div>`:""}</div>
+  ${(()=>{const sl=S.salary;if(!sl||!(sl.day>1))return "";const E=f.L.filter(x=>{const q=jparse(x.d);return q&&q[2]<sl.day});if(!E.length)return "";const sum=E.reduce((s,x)=>s+x.a,0);
+    return `<div class="card stack" style="margin-top:12px;border:2px solid var(--t-pom)"><b>⏰ قبل از حقوق (۱ تا ${fa(sl.day-1)} ${MONTHS[ym%100-1]}): ${toman(sum)}</b><div class="muted">${E.map(x=>`${jfa(x.d)} · ${esc(x.t)}: ${toman(x.a)}`).join("<br>")}</div><div class="muted">حقوقت ${fa(sl.day)}ام می‌آید؛ این مبلغ را از حقوق ${MONTHS[ymAdd(ym,-1)%100-1]} کنار بگذار. اپ خودش آن را از «قابل خرج» کم می‌کند.</div></div>`})()}
   <div class="card stack" style="margin-top:12px">${f.safety?`<div class="row between"><span>🛟 حاشیه امن (${fa(SAFE().pct)}٪ درآمد)</span><b class="out">${toman(f.safety)}</b></div>`:""}<div class="row between"><span>🛒 خرج روزمره تخمینی <span class="muted">(${f.src})</span></span><b class="out">${toman(f.daily)}</b></div>
    <div class="row between" style="border-top:1px dashed var(--line);padding-top:8px"><b>✨ پول آزاد آخر ماه</b><b class="${f.free<0?"out":"in"}" style="font-size:20px">${toman(f.free)}</b></div>
    ${f.free<0?`<div class="banner" style="background:var(--t-pom)">⚠️ این ماه ${toman(-f.free)} کم می‌آوری. خرج روزمره را کم کن یا از پس‌انداز بردار.</div>`:f.free>0?`<span class="muted">پیشنهاد: ${toman(Math.round(f.free*.5))} از آن را به پس‌انداز بزن.</span>`:""}</div>
@@ -902,7 +1023,7 @@ document.addEventListener("input",e=>{if(e.target.id==="fc_inc"||e.target.id==="
 /* ---------- auto salary, spendable, advisor ---------- */
 function processSalary(){const sl=S.salary;if(!sl||!sl.amount||!sl.day)return;const ym=ymNow(),t=todayJ();
   if(sl.last!==ym&&t[2]>=sl.day){const acc=accById(sl.acc)?sl.acc:S.accounts[0]?.id;const max=t[1]<=6?31:t[1]<=11?30:29;
-    S.tx.unshift({id:uid(),type:"in",amount:sl.amount,cat:"حقوق",acc,date:jstr([t[0],t[1],Math.min(sl.day,max)]),note:"حقوق ماهانه (خودکار)"});sl.last=ym;save();const f=forecast(ym);toast(`💼 حقوق ثبت شد · ${toman(f.fixed)} برای اقساط و ${toman(f.safety)} برای حاشیه امن کنار بگذار`)}}
+    S.tx.unshift({id:uid(),type:"in",amount:sl.amount,cat:"حقوق",acc,date:jstr([t[0],t[1],Math.min(sl.day,max)]),note:"حقوق ماهانه (خودکار)"});sl.last=ym;save();const f=forecast(ym);const en=earlyNext();toast(`💼 حقوق ثبت شد · ${toman(f.fixed)} برای اقساط این ماه${en.sum?" و "+toman(en.sum)+" برای قسط‌های اول ماه بعد":""} و ${toman(f.safety)} برای حاشیه امن کنار بگذار`)}}
 function salaryForm(){const sl=S.salary||{};form("💼 حقوق ماهانه خودکار",[
   {k:"amount",label:"مبلغ حقوق ("+U()+")",type:"money",value:sl.amount||""},
   {k:"day",label:"روز واریز در ماه (۱ تا ۳۱)",type:"int",value:sl.day||1},
@@ -914,12 +1035,16 @@ function dueRest(){const ym=ymNow(),L=[];
   (S.bills||[]).forEach(b=>{if(b.last===ym||b.auto&&todayJ()[2]>=b.day)return;L.push({t:b.title,a:b.amount,d:billDue(b)})});
   (S.cheques||[]).forEach(c=>{if(c.status==="pending"&&c.kind==="out"&&monthKey(c.due)===ym)L.push({t:"چک "+(c.person||""),a:c.amount,d:c.due})});
 
+  S.tx.forEach(t=>{if(t.type==="out"&&isFut(t)&&monthKey(t.date)===ym)L.push({t:t.note||t.cat,a:t.amount,d:t.date})});
   (S.debts||[]).forEach(x=>{if(x.settled||x.dir!=="owe"||x.id===FC_SKIP||!Array.isArray(x.plan))return;planParts(x).forEach(pp=>{if(!pp.done&&monthKey(pp.d)===ym)L.push({t:"قرض "+x.person,a:pp.a,d:pp.d})})});
   return L}
 function spendable(){const bal=S.accounts.filter(a=>a.type!=="savings").reduce((s,a)=>s+balance(a),0);const L=dueRest();const fixed=L.reduce((s,x)=>s+x.a,0);
   const t=todayJ();const dim=t[1]<=6?31:t[1]<=11?30:29;const left=Math.max(1,dim-t[2]+1);
   const sl=S.salary;const salaryComing=sl&&sl.amount&&sl.last!==ymNow()&&t[2]<sl.day;
-  const free=bal-fixed-SAFE().floor;return {bal,fixed,L,free,left,perDay:Math.floor(Math.max(0,free)/left),salaryComing,salary:salaryComing?sl.amount:0}}
+  const en=earlyNext();const reserve=salaryComing?0:en.sum;
+  const free=bal-fixed-SAFE().floor-reserve;return {bal,fixed,L,free,left,perDay:Math.floor(Math.max(0,free)/left),salaryComing,salary:salaryComing?sl.amount:0,reserve,early:en}}
+function earlyNext(){const sl=S.salary;if(!sl||!sl.amount||!(sl.day>1))return {sum:0,L:[]};const L=forecast(ymAdd(ymNow(),1),true).L.filter(x=>{const a=jparse(x.d);return a&&a[2]<sl.day});return {sum:L.reduce((s,x)=>s+x.a,0),L}}
+function cashLow(){const sl=S.salary;const sp=spendable();if(!sp.salaryComing)return null;const before=sp.L.filter(x=>{const a=jparse(x.d);return a&&a[2]<sl.day}).reduce((s,x)=>s+x.a,0);const gap=before-sp.bal;return gap>0?{gap,before}:null}
 const ESS=["نان","شیر","ماست","پنیر","تخم","برنج","روغن","مرغ","گوشت","سبزی","میوه","سیب‌زمینی","پیاز","گوجه","حبوبات","عدس","لوبیا","دارو","پوشک","شوینده","مایع","پودر","دستمال","آب","قبض","اجاره","بنزین","شکر","چای","نمک"];
 const LUX=["پیتزا","فست","رستوران","کافه","بستنی","شکلات","پفک","چیپس","نوشابه","کیک","آجیل","لباس","کفش","عطر","ادکلن","لوازم آرایش","اسباب‌بازی","گیم","طلا","موبایل","هدفون","تزئینی","تفریح","سینما"];
 const isEss=n=>ESS.some(k=>norm(n).includes(norm(k)));const isLux=n=>LUX.some(k=>norm(n).includes(norm(k)));
@@ -1096,15 +1221,22 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-rplan],[da
 const pkey=n=>norm(n).replace(/[0-9۰-۹]/g,"");
 function priceHist(name){const k=pkey(name);return (S.prices||[]).filter(p=>pkey(p.name)===k).sort((a,b)=>(jToDate(b.d)||0)-(jToDate(a.d)||0))}
 function lastPrice(name){return priceHist(name)[0]}
-function addPrice(name,price,qty,store){if(!name||!price)return;ensure();S.prices.unshift({id:uid(),name,price,qty:qty||"",store:store||"",d:jstr(todayJ())})}
-function priceSheet(x){const lp=lastPrice(x.name);
-  sheet(`<h2 style="margin-top:0">✅ ${esc(x.name)} خریده شد</h2>${lp?`<p class="muted" style="margin-top:0">دفعه قبل: ${toman(lp.price)}${lp.qty?" برای "+esc(lp.qty):""} · ${jfa(lp.d)}</p>`:""}
-   <div class="field"><label for="pr_p">قیمت (${U()}) — اختیاری</label><input type="text" id="pr_p" inputmode="decimal" placeholder="چقدر خریدی؟"></div>
-   <div class="grid2"><div class="field"><label for="pr_q">مقدار</label><input type="text" id="pr_q" value="${esc(x.qty||"")}"></div><div class="field"><label for="pr_s">فروشگاه</label><input type="text" id="pr_s" value="${esc((S.prices||[])[0]?.store||"")}"></div></div>
+function addPrice(name,price,qty,store,unit,total){if(!name||!price)return;ensure();S.prices.unshift({id:uid(),name,price,qty:qty||"",store:store||"",d:jstr(todayJ()),...(unit?{unit,total:total||price}:{})})}
+function priceSheet(x){const lp=lastPrice(x.name);const n0=x.n||num(x.qty)||1;const u0=x.unit||"عدد";const cat=x.cat||shopCat(x.name);
+  const fmt=v=>v?(FX()?String(+v.toFixed(2)):Math.round(v).toLocaleString("en")):"";
+  sheet(`<h2 style="margin-top:0">✅ ${esc(x.name)} خریده شد</h2>${lp?`<p class="muted" style="margin-top:0">دفعه قبل: ${toman(lp.price)}${lp.unit?" هر "+esc(lp.unit):lp.qty?" برای "+esc(lp.qty):""} · ${jfa(lp.d)}</p>`:""}
+   <div class="grid2"><div class="field"><label for="pr_n">تعداد / مقدار</label><input type="text" id="pr_n" inputmode="decimal" value="${n0}"></div><div class="field"><label for="pr_u">واحد</label><select id="pr_u">${SUNITS.map(u=>`<option ${u===u0?"selected":""}>${u}</option>`).join("")}</select></div></div>
+   <div class="grid2"><div class="field"><label for="pr_p">قیمت هر واحد (${U()})</label><input type="text" id="pr_p" inputmode="decimal" placeholder="مثلاً ۱۲۰,۰۰۰"></div><div class="field"><label for="pr_t">جمع (${U()})</label><input type="text" id="pr_t" inputmode="decimal" placeholder="خودکار"></div></div>
+   <div class="field"><label for="pr_s">فروشگاه</label><input type="text" id="pr_s" value="${esc((S.prices||[])[0]?.store||"")}"></div>
+   <p class="muted" style="margin:6px 0 0">${x.fid?`🧊 به موجودی «${esc(S.fridge.find(f=>f.id===x.fid)?.loc||"یخچال")}» اضافه شد`:`${SHOP_E[cat]||"📦"} ${esc(cat)} — به موجودی نمی‌رود`}</p>
    <div class="row" style="margin-top:12px"><button class="btn grow" id="ok">ثبت</button><button class="btn ghost" id="no">بدون قیمت</button></div>`,
-  (sh,close)=>{const p=sh.querySelector("#pr_p");moneyInput(p);setTimeout(()=>p.focus(),80);sh.querySelector("#no").onclick=close;
-    sh.querySelector("#ok").onclick=()=>{const v=num(p.value)/F();if(v){addPrice(x.name,v,sh.querySelector("#pr_q").value.trim(),sh.querySelector("#pr_s").value.trim());x.price=v;
-      const lp2=lp&&lp.price;toast(lp2?(v>lp2?`📈 ${fa(Math.round((v/lp2-1)*100))}٪ گران‌تر از دفعه قبل`:v<lp2?`📉 ${fa(Math.round((1-v/lp2)*100))}٪ ارزان‌تر از دفعه قبل`:"همان قیمت دفعه قبل"):"قیمت ثبت شد ✓");save();render()}close()}})}
+  (sh,close)=>{const g=q=>sh.querySelector(q);const p=g("#pr_p"),t=g("#pr_t"),n=g("#pr_n");moneyInput(p);moneyInput(t);setTimeout(()=>p.focus(),80);g("#no").onclick=close;
+    const N=()=>num(n.value)||1;p.addEventListener("input",()=>{t.value=fmt(num(p.value)*N())});t.addEventListener("input",()=>{p.value=fmt(num(t.value)/N())});n.addEventListener("input",()=>{if(num(p.value))t.value=fmt(num(p.value)*N())});
+    g("#ok").onclick=()=>{const nn=N(),u=g("#pr_u").value;x.n=nn;x.unit=u;x.qty=fa(nn)+" "+u;const f=x.fid&&S.fridge.find(f=>f.id===x.fid);if(f)f.qty=x.fnew?x.qty:sumQty(x.fold,x.qty);
+      const tot=num(t.value)/F(),up=num(p.value)/F()||(tot?tot/nn:0);
+      if(up){addPrice(x.name,up,x.qty,g("#pr_s").value.trim(),u,tot||up*nn);x.price=tot||up*nn;x.unitPrice=up;
+        const lp2=lp&&(!lp.unit||lp.unit===u)?lp.price:0;toast(lp2?(up>lp2?`📈 ${fa(Math.round((up/lp2-1)*100))}٪ گران‌تر از دفعه قبل`:up<lp2?`📉 ${fa(Math.round((1-up/lp2)*100))}٪ ارزان‌تر از دفعه قبل`:"همان قیمت دفعه قبل"):"قیمت ثبت شد ✓")}
+      lowStock();save();render();close()}})}
 let prQ="";
 function vPrices(){ensure();const groups={};(S.prices||[]).forEach(p=>{const k=pkey(p.name);(groups[k]=groups[k]||[]).push(p)});
   const q=norm(prQ);const L=Object.values(groups).map(g=>g.sort((a,b)=>(jToDate(b.d)||0)-(jToDate(a.d)||0))).filter(g=>!q||norm(g[0].name).includes(q)).sort((a,b)=>(jToDate(b[0].d)||0)-(jToDate(a[0].d)||0));
@@ -1112,7 +1244,7 @@ function vPrices(){ensure();const groups={};(S.prices||[]).forEach(p=>{const k=p
   <p class="muted" style="margin-top:0">هر بار چیزی از لیست خرید تیک بزنی، قیمتش را می‌پرسد. اینجا آخرین قیمت و گران یا ارزان شدنش را می‌بینی.</p>
   <input type="text" id="prq" placeholder="🔍 جستجو: مثلاً برنج" value="${esc(prQ)}" autocomplete="off" style="margin-bottom:10px">
   <div class="stack">${L.length?L.map(g=>{const a=g[0],b=g[1];const ch=b?(a.price/b.price-1)*100:0;
-    return `<div class="card stack">${""}<div class="row">${bub(foodE(a.name),a.name)}<div class="grow"><b>${esc(a.name)}</b>${a.qty?` <span class="muted">${esc(a.qty)}</span>`:""}<br><span class="muted">${jfa(a.d)}${a.store?" · "+esc(a.store):""}</span></div><div style="text-align:left"><b>${toman(a.price)}</b><br>${b?`<span class="pill ${ch>0?"bad":ch<0?"ok":""}">${ch>0?"📈 ":ch<0?"📉 ":""}${fa(Math.abs(Math.round(ch)))}٪</span>`:""}</div></div>
+    return `<div class="card stack">${""}<div class="row">${bub(foodE(a.name),a.name)}<div class="grow"><b>${esc(a.name)}</b>${a.qty?` <span class="muted">${esc(a.qty)}</span>`:""}<br><span class="muted">${jfa(a.d)}${a.store?" · "+esc(a.store):""}</span></div><div style="text-align:left"><b>${toman(a.price)}</b>${a.unit?`<br><span class="muted">هر ${esc(a.unit)}</span>`:""}<br>${b?`<span class="pill ${ch>0?"bad":ch<0?"ok":""}">${ch>0?"📈 ":ch<0?"📉 ":""}${fa(Math.abs(Math.round(ch)))}٪</span>`:""}</div></div>
     ${g.length>1?`<details><summary class="muted" style="cursor:pointer">تاریخچه ${fa(g.length)} خرید</summary><div class="list">${g.map(p=>`<div class="item"><span class="t">${jfa(p.d)}${p.store?" · "+esc(p.store):""}${p.qty?" · "+esc(p.qty):""}</span><b>${toman(p.price)}</b><button class="icon" data-del="prices:${p.id}">حذف</button></div>`).join("")}</div></details>`:`<div class="row"><button class="icon" data-del="prices:${a.id}">حذف</button></div>`}</div>`}).join(""):`<div class="card">${empty("🏷️","هنوز قیمتی ثبت نشده. در لیست خرید وقتی چیزی را تیک می‌زنی، قیمتش را بنویس.")}</div>`}</div>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-fx=addPrice]");if(!t)return;
   form("🏷️ ثبت قیمت",[{k:"name",label:"جنس",type:"text"},{k:"price",label:"قیمت ("+U()+")",type:"money"},{k:"qty",label:"مقدار",type:"text",ph:"مثلاً ۱ کیلو"},{k:"store",label:"فروشگاه",type:"text"}],o=>{if(!o.name||!o.price)return false;addPrice(o.name,o.price,o.qty,o.store)})},true);
@@ -1148,9 +1280,9 @@ document.addEventListener("click",async e=>{
   if(d.loc){fLoc=d.loc;render();return}
   if(d.rep){repM=+d.rep;render();return}
   if(d.edit){const[c,id]=d.edit.split(":");const x=find(c,id);({deposits:depositForm2,inst:x=>x&&x.loan?loanForm(x):instForm(x),events:eventForm,tx:txForm,shop:shopForm,fridge:fridgeForm,todo:todoForm,save:saveForm,accounts:accForm,budgets:budgetForm,bills:billForm,cheques:chequeForm,debts:debtForm})[c](x);return}
-  if(d.shopt){const x=find("shop",d.shopt);x.done=!x.done;save();render();if(x.done){priceSheet(x);if(S.shop.every(i=>i.done))party()}return}
+  if(d.shopt){const x=find("shop",d.shopt);x.done=!x.done;if(x.done)shopToFridge(x);else shopUnFridge(x);lowStock();save();render();if(x.done){priceSheet(x);if(S.shop.every(i=>i.done))party()}return}
   if(d.todot){const x=find("todo",d.todot);x.done=!x.done;save();render();return}
-  if(d.finish){const x=find("fridge",d.finish);S.fridge=S.fridge.filter(f=>f!==x);S.shop.unshift({id:uid(),name:x.name,qty:"",done:false});save();render();toast(`${x.name} به لیست خرید رفت`);return}
+  if(d.finish){const x=find("fridge",d.finish);if(x.min){x.qty="0"+(x.qty?" "+(enDigits(x.qty).replace(/[\d.٫\s]+/,"").trim()):"");x.lowAdded=true}else S.fridge=S.fridge.filter(f=>f!==x);if(!S.shop.some(i=>!i.done&&ingMatch(i.name,x.name)))S.shop.unshift({id:uid(),name:x.name,qty:"",done:false,prio:x.min?"high":"mid",cat:shopCat(x.name)});save();render();toast(`${x.name} به لیست خرید رفت`);return}
   if(d.miss){const r=scoreRecipes().find(r=>r.n===d.miss);let k=0;r.miss.forEach(m=>{if(!S.shop.some(s=>norm(s.name)===norm(m))){S.shop.unshift({id:uid(),name:m,qty:"",done:false});k++}});save();render();toast(`${fa(k)} قلم به لیست خرید اضافه شد`);return}
   if(d.planPick){pickDay(d.planPick);return}
   if(d.slot){pickMeal(...d.slot.split(":"));return}
@@ -1179,7 +1311,13 @@ document.addEventListener("click",async e=>{
   else if(a==="photoMenu")photoMenu();
   else if(a==="photoInvoice"){if(PHOTO())askPhoto("invoice");else toast("عکس‌خوانی در این نمایش در دسترس نیست")}
   else if(a==="photoFridge")askPhoto("fridge");
+  else if(a==="clearDone"){S.shop=S.shop.filter(x=>!x.done);save();render();toast("خریده‌ها از لیست پاک شد")}
   else if(a==="toFridge"){const done=S.shop.filter(x=>x.done);done.forEach(x=>S.fridge.unshift({id:uid(),name:x.name,qty:x.qty,loc:"یخچال",exp:""}));S.shop=S.shop.filter(x=>!x.done);save();render();toast(`${fa(done.length)} قلم به موجودی رفت`)}
+  else if(a==="shopExpense"&&S.shop.some(x=>x.done&&x.price)){const D=S.shop.filter(x=>x.done&&x.price);const tot=D.reduce((s,x)=>s+x.price,0);
+    accPick("ثبت هزینه خرید — "+toman(tot),acc=>{if(!acc)return;const by={};const TC=c=>c==="لبنیات"?"سوپرمارکت":c==="دارو"?"درمان":OUT_CATS.includes(c)?c:"سایر";
+      D.forEach(x=>{const c=TC(x.cat||shopCat(x.name));(by[c]=by[c]||[]).push(x)});
+      Object.entries(by).forEach(([c,L])=>S.tx.unshift({id:uid(),type:"out",amount:L.reduce((s,x)=>s+x.price,0),cat:c,acc,date:jstr(todayJ()),note:L.map(x=>x.name).join("، ").slice(0,120)}));
+      S.shop=S.shop.filter(x=>!x.done);save();render();toast(`🧾 ${fa(Object.keys(by).length)} هزینه ثبت شد (به تفکیک دسته)`)})}
   else if(a==="shopExpense"){txForm({},{type:"out",cat:"سوپرمارکت",amount:S.shop.filter(x=>x.done).reduce((a,x)=>a+(x.price||0),0)||"",note:S.shop.filter(x=>x.done).map(x=>x.name).join("، ").slice(0,120)})}
   else if(a==="weekShop"){const need=new Set();Object.values(S.plan).forEach(p=>[p.l,p.d].forEach(m=>{const r=allRecipes().find(r=>r.n===m);r&&r.i.forEach(x=>{if(!have(x))need.add(x)})}));
     let k=0;need.forEach(m=>{if(!S.shop.some(s=>norm(s.name)===norm(m))){S.shop.unshift({id:uid(),name:m,qty:"",done:false});k++}});save();render();toast(k?`${fa(k)} قلم به لیست خرید اضافه شد`:"همه مواد را داری یا برنامه خالی است")}
