@@ -43,8 +43,12 @@ async function sb(path,body,method,extra){
   if(!r.ok){const e=new Error((j&&(j.msg||j.message||j.error_description||j.error))||("HTTP "+r.status));e.status=r.status;throw e}
   return j;
 }
-async function auth(){if(SY.access&&SY.exp>Date.now()+60000)return;if(!SY.refresh)throw new Error("login");
-  const j=await sb("/auth/v1/token?grant_type=refresh_token",{refresh_token:SY.refresh});setSess(j)}
+let _authP=null;
+async function auth(){if(SY.access&&SY.exp>Date.now()+60000)return;if(!SY.refresh){SY.access="";sySave();throw new Error("login")}
+  if(_authP)return _authP;
+  _authP=(async()=>{try{const j=await sb("/auth/v1/token?grant_type=refresh_token",{refresh_token:SY.refresh});setSess(j)}
+    catch(e){if(e.status===400||e.status===401||/refresh token|invalid grant/i.test(e.message)){SY.access="";SY.refresh="";sySave();throw new Error("login")}throw e}
+    finally{_authP=null}})();return _authP}
 function setSess(j){SY.access=j.access_token;SY.refresh=j.refresh_token;SY.exp=Date.now()+(j.expires_in||3600)*1000;if(j.user)SY.email=j.user.email;sySave()}
 function applyShared(o){const keep={auth:S.auth,name:S.name};SYNC_ARR.forEach(k=>S[k]=o[k]);S.plan=o.plan;S.unit=o.unit||S.unit;S.loc=o.loc||{};S._m=o._m;S.auth=keep.auth;S.name=keep.name;delete S.example;
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}snap()}
@@ -79,7 +83,7 @@ function syncCard(){
   if(!SY.url||!SY.key)body=`<div class="field"><label for="sy_url">آدرس سرور (Project URL)</label><input type="text" id="sy_url" dir="ltr" placeholder="https://xxxx.supabase.co"></div>
     <div class="field"><label for="sy_key">کلید (anon key)</label><input type="text" id="sy_key" dir="ltr" placeholder="eyJ..."></div><button class="btn small" data-sync="cfg" style="align-self:flex-start">ذخیره</button>`;
   else if(!SY.access)body=`<span class="muted">هر نفر با ایمیل خودش وارد می‌شود، بعد هر دو به یک «خانواده» وصل می‌شوید.</span>
-    <div class="field"><label for="sy_em">ایمیل</label><input type="text" id="sy_em" dir="ltr" inputmode="email" autocomplete="off"></div>
+    ${SY.email?`<p class="err" style="margin:0">ورودت منقضی شده؛ فقط رمز را بزن و «ورود».</p>`:""}<div class="field"><label for="sy_em">ایمیل</label><input type="text" id="sy_em" dir="ltr" inputmode="email" autocomplete="off" value="${esc(SY.email||"")}"></div>
     <div class="field"><label for="sy_pw">رمز (حداقل ۶ حرف)</label><div class="pw"><input type="password" id="sy_pw" dir="ltr" autocomplete="off">${eye}</div></div>
     <p class="err" id="sy_err"></p><div class="row"><button class="btn small grow" data-sync="login">ورود</button><button class="btn small ghost grow" data-sync="signup">ثبت‌نام</button></div><button class="icon" data-sync="reset" style="align-self:flex-start">تغییر سرور</button>`;
   else if(!SY.home)body=`<span class="muted">وارد شدی: ${esc(SY.email||"")}</span>
@@ -103,7 +107,7 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-sync
     else if(a==="create"){b.disabled=true;await auth();const j=await sb("/rest/v1/rpc/create_home",{});SY.home=j.id;SY.code=j.code;SY.rev=0;sySave();
       if(S.example){const n=S.name,au=S.auth,un=S.unit;S=blank();S.name=n;S.auth=au;S.unit=un}
       PREV=null;SYNC_ARR.forEach(k=>(S[k]||[]).forEach(it=>it._u=it._u||Date.now()));snap();await push();render();party();toast("خانواده ساخته شد 🎉")}
-    else if(a==="join"){const c=$("#sy_code").value.trim().toUpperCase();if(!c)return er("کد را وارد کن");b.disabled=true;await auth();
+    else if(a==="join"){const c=$("#sy_code").value.trim().toUpperCase().replace(/[IL]/g,"1").replace(/O/g,"0").replace(/\s/g,"");if(!c)return er("کد را وارد کن");b.disabled=true;await auth();
       const j=await sb("/rest/v1/rpc/join_home",{p_code:c});SY.home=j.id;SY.code=j.code;SY.rev=-1;sySave();
       if(S.example){SYNC_ARR.forEach(k=>S[k]=[]);S.plan={};S._m={tomb:{}};delete S.example;snap()}
       await pull();render();party();toast("به خانواده وصل شدی 🎉")}
@@ -111,7 +115,7 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-sync
     else if(a==="copy")copy(SY.code);
     else if(a==="reset"){SY={url:"",key:""};sySave();render()}
     else if(a==="leave"){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="مطمئنی؟";return}SY.home=null;SY.code=null;SY.rev=0;sySave();render()}
-  }catch(err){b.disabled=false;const m=String(err.message||err);
+  }catch(err){b.disabled=false;const m=String(err.message||err);if(m==="login"||/refresh token/i.test(m)){if(/refresh token/i.test(m)){SY.access="";SY.refresh="";sySave()}render();toast("ورودت منقضی شده بود؛ رمز را بزن و دوباره «ورود»");return}
     er(/Invalid login|invalid_credentials/i.test(m)?"ایمیل یا رمز اشتباه است":/already registered|already exists/i.test(m)?"این ایمیل قبلاً ثبت شده؛ «ورود» را بزن":/not_found/.test(m)?"کد خانواده پیدا نشد":/api key|apikey/i.test(m)?"کلید سرور اشتباه است؛ «تغییر سرور» را بزن و کلید را دوباره بچسبان":/fetch|network|Failed/i.test(m)?"به سرور وصل نشد؛ فیلترشکن را روشن کن":m);
     if(!$("#sy_err"))toast("خطا: "+m)}
 });
