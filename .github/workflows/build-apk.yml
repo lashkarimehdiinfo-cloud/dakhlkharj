@@ -919,7 +919,7 @@ jobs:
         run: |
           J=app/src/main/java/ir/dakhlkharj/app
           cd android && chmod +x gradlew
-          if ./gradlew assembleDebug; then echo 'FULL BUILD OK'; if [ -n "$KEYSTORE_PASS" ] && [ -f ../release.jks ]; then ./gradlew assembleRelease; fi; exit 0; fi
+          if ./gradlew assembleDebug; then echo 'FULL BUILD OK'; if [ -n "$KEYSTORE_PASS" ] && [ -f ../release.jks ]; then sed -i 's#<head>#<head><script>window.PUBLIC_BUILD=true</script>#' app/src/main/assets/public/index.html; grep -c PUBLIC_BUILD app/src/main/assets/public/index.html; ./gradlew assembleRelease; fi; exit 0; fi
           echo 'NATIVE FEATURES FAILED - building without them'
           cp ../bak/AndroidManifest.xml app/src/main/AndroidManifest.xml; cp ../bak/build.gradle app/build.gradle; printf 'package ir.dakhlkharj.app;\n\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {}\n' > $J/MainActivity.java
           rm -f $J/HomeNativePlugin.java $J/HomeWidget.java $J/SyncService.java $J/BootReceiver.java app/src/main/res/layout/home_widget.xml app/src/main/res/xml/home_widget_info.xml app/src/main/res/drawable/home_widget_bg.xml
