@@ -1,6 +1,6 @@
 
 /* ---------- family sync (Supabase) ---------- */
-const SB_URL_DEFAULT="https://jzzjgvqewgtxulgowmiv.supabase.co",SB_KEY_DEFAULT="sb_publishable_p8V9yDoxk9r5GWb5L13zkg_duTfsSbt";
+const PUB=!!window.PUBLIC_BUILD;const SB_URL_DEFAULT=PUB?"":"https://jzzjgvqewgtxulgowmiv.supabase.co",SB_KEY_DEFAULT=PUB?"":"sb_publishable_p8V9yDoxk9r5GWb5L13zkg_duTfsSbt";
 const SYNC_ARR=["accounts","tx","inst","shop","todo","fridge","save","budgets","bills","cheques","debts","recipes","events","deposits","prices"];
 const SKEY="home-budget-sync";
 let SY={};try{SY=JSON.parse(localStorage.getItem(SKEY)||"{}")}catch(e){}
@@ -77,7 +77,7 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 setTimeout(pull,1500);
 
 const syAgo=()=>{if(!syLast)return "هنوز همگام نشده";const s=Math.round((Date.now()-syLast)/1000);return s<60?"همین الان":fa(Math.round(s/60))+" دقیقه پیش"};
-function syncCard(){
+function syncCard(){if(PUB)return `<div class="card stack"><b>👨‍👩‍👧 همگام‌سازی خانواده و چت</b><span class="muted">به‌زودی در نسخهٔ طلایی: اطلاعات بین گوشی‌های خانواده یکی می‌شود و چت خانوادگی با اعلان صدادار.</span></div>`;
   const st=syStatus==="off"?`<span class="pill bad">قطع — اینترنت یا فیلترشکن را چک کن</span>`:syStatus==="login"?`<span class="pill warn">دوباره وارد شو</span>`:`<span class="pill ok">وصل · ${syAgo()}</span>`;
   let body;
   if(!SY.url||!SY.key)body=`<div class="field"><label for="sy_url">آدرس سرور (Project URL)</label><input type="text" id="sy_url" dir="ltr" placeholder="https://xxxx.supabase.co"></div>
@@ -281,7 +281,7 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-nt]"
 setTimeout(async()=>{const N=NAT();if(!N||!N.battery||!SY.home)return;try{if(localStorage.getItem("home-batask"))return;localStorage.setItem("home-batask","1")}catch(e){return}const r=await N.battery({ask:false}).catch(()=>({ok:true}));if(!r.ok)N.battery({ask:true}).catch(()=>{})},9000);
 document.addEventListener("visibilitychange",fgsVis);setTimeout(()=>{fgsVis();fgsStart()},4000);
 let _fgsSig="";setInterval(()=>{const g=[SY.home,SY.code,SY.email,fgsOn()].join("|");if(g!==_fgsSig){_fgsSig=g;fgsStart()}},3000);
-{const _nc=nativeCard;nativeCard=function(){if(!NAT())return "";return `<div class="card stack" style="background:var(--t-green)"><b>🔔 اعلان فوری خانواده</b><span class="muted">پیام چت، لیست خرید و کارهای جدید مثل تلگرام همان لحظه با صدا می‌آید، حتی وقتی اپ بسته است. یک اعلان کوچک ثابت در نوار بالای گوشی می‌ماند.</span>${SY.home?`<button class="btn small ${fgsOn()?"ghost":""}" data-fgs style="align-self:flex-start">${fgsOn()?"خاموش کردن":"روشن کردن"}</button>`:`<span class="muted">اول به خانواده وصل شو.</span>`}</div>
+{const _nc=nativeCard;nativeCard=function(){if(!NAT())return "";if(PUB)return _nc();return `<div class="card stack" style="background:var(--t-green)"><b>🔔 اعلان فوری خانواده</b><span class="muted">پیام چت، لیست خرید و کارهای جدید مثل تلگرام همان لحظه با صدا می‌آید، حتی وقتی اپ بسته است. یک اعلان کوچک ثابت در نوار بالای گوشی می‌ماند.</span>${SY.home?`<button class="btn small ${fgsOn()?"ghost":""}" data-fgs style="align-self:flex-start">${fgsOn()?"خاموش کردن":"روشن کردن"}</button>`:`<span class="muted">اول به خانواده وصل شو.</span>`}</div>
   <div class="card stack"><b>🔊 صدای اعلان پیام</b><span class="muted">هر پیام که بیاید، گوشی زنگ مخصوص دخل و خرج می‌زند و بعد با صدای فارسی می‌گوید «… پیام داده». بهتر است صدای خودتان را ضبط کنید (مثلاً «مهدی پیام داده»)؛ اگر ضبط نکنید، اگر گوشی صدای فارسی داشته باشد خودش می‌خواند.</span>
   <div class="row wrap" style="gap:8px"><button class="btn small" data-nt="test">🔔 تست اعلان</button><button class="btn small ghost" data-nt="rec">🎙️ ${(()=>{try{return localStorage.getItem("home-alertvoice")}catch(e){return null}})()?"ضبط دوباره صدا":"ضبط صدای اعلان"}</button>${(()=>{try{return localStorage.getItem("home-alertvoice")}catch(e){return null}})()?`<button class="btn small ghost" data-nt="del">🗑️ حذف صدا</button>`:""}</div>
   <div class="row wrap" style="gap:8px"><button class="btn small ghost" data-nt="bat">🔋 اجازه کار در پس‌زمینه</button><button class="btn small ghost" data-nt="ch">⚙️ تنظیم صدا در اندروید</button></div>
