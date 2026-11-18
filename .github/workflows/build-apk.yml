@@ -89,6 +89,8 @@ jobs:
           print('icons ok')
           PY
       - name: Fixed signing key and version
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
           mkdir -p ~/.android && cp debug.keystore ~/.android/debug.keystore
           sed -i -E "s/versionCode [0-9]+/versionCode $((100 + ${{ github.run_number }}))/" android/app/build.gradle
@@ -108,6 +110,28 @@ jobs:
               }
           }
           GRADLE
+          if [ -f release.jks ] && [ -n "$KEYSTORE_PASS" ]; then
+            cat >> android/app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  releaseKey {
+                      storeFile file("../../release.jks")
+                      storePassword System.getenv("KEYSTORE_PASS")
+                      keyAlias "dakhlkharj"
+                      keyPassword System.getenv("KEYSTORE_PASS")
+                  }
+              }
+              buildTypes {
+                  release { signingConfig signingConfigs.releaseKey; minifyEnabled false }
+              }
+              lint { checkReleaseBuilds false; abortOnError false }
+          }
+          GRADLE
+            keytool -list -v -keystore release.jks -storepass "$KEYSTORE_PASS" | grep -i "SHA256" | head -1
+          else
+            echo "NO RELEASE KEY - only debug APK will be built"
+          fi
           grep -n "versionCode" android/app/build.gradle
           keytool -list -v -keystore debug.keystore -storepass android | grep -i "SHA256" | head -1
       - name: Native features (SMS, fingerprint, widget)
@@ -233,7 +257,60 @@ jobs:
 
               @PluginMethod
               public void setVisible(PluginCall call) {
-                  getContext().getSharedPreferences(SyncService.PREFS, Context.MODE_PRIVATE).edit().putBoolean("visible", Boolean.TRUE.equals(call.getBoolean("v", false))).apply();
+                  getContext().getSharedPreferences(SyncService.PREFS, Context.MODE_PRIVATE).edit().putBoolean("visible", Boolean.TRUE.equals(call.getBoolean("v", false))).putLong("visTs", System.currentTimeMillis()).apply();
+                  call.resolve();
+              }
+
+              @PluginMethod
+              public void testNotify(PluginCall call) {
+                  try {
+                      android.content.Intent i = new android.content.Intent(getContext(), SyncService.class).putExtra("test", true);
+                      ContextCompat.startForegroundService(getContext(), i);
+                      call.resolve();
+                  } catch (Exception ex) { call.reject(String.valueOf(ex.getMessage())); }
+              }
+
+              @PluginMethod
+              public void setAlertVoice(PluginCall call) {
+                  try {
+                      java.io.File dir = getContext().getFilesDir();
+                      java.io.File[] old = dir.listFiles((d, n) -> n.startsWith("alert_voice."));
+                      if (old != null) for (java.io.File f : old) f.delete();
+                      String b64 = call.getString("b64", "");
+                      if (b64 != null && !b64.isEmpty()) {
+                          String ext = call.getString("ext", "webm");
+                          byte[] data = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                          try (java.io.FileOutputStream fo = new java.io.FileOutputStream(new java.io.File(dir, "alert_voice." + ext))) { fo.write(data); }
+                      }
+                      call.resolve();
+                  } catch (Exception ex) { call.reject(String.valueOf(ex.getMessage())); }
+              }
+
+              @PluginMethod
+              public void battery(PluginCall call) {
+                  com.getcapacitor.JSObject r = new com.getcapacitor.JSObject();
+                  try {
+                      android.os.PowerManager pm = (android.os.PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+                      boolean ok = pm != null && pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+                      r.put("ok", ok);
+                      if (!ok && Boolean.TRUE.equals(call.getBoolean("ask", false))) {
+                          android.content.Intent i = new android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + getContext().getPackageName()));
+                          i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                          getContext().startActivity(i);
+                      }
+                  } catch (Exception ex) { r.put("ok", false); }
+                  call.resolve(r);
+              }
+
+              @PluginMethod
+              public void notifSettings(PluginCall call) {
+                  try {
+                      android.content.Intent i = new android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                          .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getContext().getPackageName())
+                          .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, SyncService.CH_MSG);
+                      i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                      getContext().startActivity(i);
+                  } catch (Exception ex) {}
                   call.resolve();
               }
 
@@ -317,7 +394,16 @@ jobs:
           import android.content.Intent;
           import android.content.SharedPreferences;
           import android.content.pm.ServiceInfo;
+          import android.media.AudioAttributes;
+          import android.media.AudioManager;
+          import android.media.MediaPlayer;
+          import android.net.Uri;
           import android.os.Build;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.speech.tts.TextToSpeech;
+          import java.io.File;
+          import java.util.Locale;
           import android.os.IBinder;
           import android.os.PowerManager;
           import androidx.core.app.NotificationCompat;
@@ -331,12 +417,28 @@ jobs:
 
           public class SyncService extends Service {
               static final String PREFS = "home_sync";
-              static final String CH_MSG = "family_messages";
+              static final String CH_MSG = "family_msg_fa2";
               static final String CH_SVC = "family_service";
               private volatile boolean running = false;
               private Thread worker;
               private PowerManager.WakeLock wl;
               private int nid = 1000;
+              private TextToSpeech tts;
+              private boolean ttsOk = false;
+              private final Handler ui = new Handler(Looper.getMainLooper());
+
+              @Override
+              public void onCreate() {
+                  super.onCreate();
+                  try {
+                      tts = new TextToSpeech(this, st -> {
+                          if (st != TextToSpeech.SUCCESS) return;
+                          int r = tts.setLanguage(new Locale("fa", "IR"));
+                          if (r < 0) r = tts.setLanguage(new Locale("fa"));
+                          ttsOk = r >= 0;
+                      });
+                  } catch (Exception ignored) {}
+              }
 
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
@@ -353,6 +455,9 @@ jobs:
                       .build();
                   if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
                   else startForeground(1, n);
+                  if (intent != null && intent.getBooleanExtra("test", false)) {
+                      ui.postDelayed(() -> show("💬 دخل و خرج خانه — تست", "این یک پیام آزمایشی است. اگر صدا را شنیدی، اعلان‌ها درست کار می‌کنند.", "پیام جدید در دخل و خرج خانه"), 600);
+                  }
                   if (!running) {
                       running = true;
                       try {
@@ -374,8 +479,14 @@ jobs:
               private void channels() {
                   if (Build.VERSION.SDK_INT < 26) return;
                   NotificationManager nm = getSystemService(NotificationManager.class);
-                  NotificationChannel m = new NotificationChannel(CH_MSG, "پیام‌ها و لیست خرید خانواده", NotificationManager.IMPORTANCE_HIGH);
+                  try { nm.deleteNotificationChannel("family_messages"); } catch (Exception ignored) {}
+                  NotificationChannel m = new NotificationChannel(CH_MSG, "پیام‌های خانواده (با صدا)", NotificationManager.IMPORTANCE_HIGH);
                   m.enableVibration(true);
+                  m.setVibrationPattern(new long[]{0, 300, 150, 300, 150, 500});
+                  m.enableLights(true);
+                  m.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+                  Uri snd = Uri.parse("android.resource://" + getPackageName() + "/raw/fam_chime");
+                  m.setSound(snd, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
                   nm.createNotificationChannel(m);
                   NotificationChannel s = new NotificationChannel(CH_SVC, "سرویس همگام‌سازی", NotificationManager.IMPORTANCE_MIN);
                   s.setShowBadge(false);
@@ -403,8 +514,8 @@ jobs:
                   SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
                   String url = sp.getString("url", ""), key = sp.getString("key", ""), home = sp.getString("home", ""), code = sp.getString("code", ""), me = sp.getString("me", "");
                   if (home.isEmpty() || url.isEmpty()) return;
-                  boolean visible = sp.getBoolean("visible", false);
                   long now = System.currentTimeMillis();
+                  boolean visible = sp.getBoolean("visible", false) && now - sp.getLong("visTs", 0) < 45000;
                   long cs = sp.getLong("csince", 0), hs = sp.getLong("hsince", 0);
                   if (cs == 0) cs = now;
                   if (hs == 0) hs = now;
@@ -421,7 +532,8 @@ jobs:
                       if (visible || ub.isEmpty() || ub.equals(me)) continue;
                       String kind = m.optString("kind", "text");
                       String txt = kind.equals("image") ? "📷 عکس" : kind.equals("voice") ? "🎤 پیام صوتی" : m.optString("body", "");
-                      show("💬 " + m.optString("ubn", "خانواده"), txt);
+                      String who = m.optString("ubn", "");
+                      show("💬 " + (who.isEmpty() ? "خانواده" : who), txt, who.isEmpty() ? "پیام جدید در دخل و خرج خانه" : who + " پیام داده");
                   }
 
                   JSONObject b2 = new JSONObject();
@@ -437,13 +549,54 @@ jobs:
                           if (visible || ub.isEmpty() || ub.equals(me)) continue;
                           String k = x.optString("k", "");
                           String lab = k.equals("shop") ? "🛒 لیست خرید" : k.equals("todo") ? "✅ کار جدید" : "💸 خرج جدید";
-                          show(lab + " — " + x.optString("ubn", "خانواده"), x.optString("n", ""));
+                          String who = x.optString("ubn", "");
+                          String say = k.equals("shop") ? "لیست خرید جدید" : k.equals("todo") ? "کار جدید" : "خرج جدید";
+                          show(lab + " — " + (who.isEmpty() ? "خانواده" : who), x.optString("n", ""), say + (who.isEmpty() ? "" : " از " + who));
                       }
                   }
                   sp.edit().putLong("csince", cmx).putLong("hsince", hmx).apply();
               }
 
-              private void show(String title, String text) {
+              private long lastSpeak = 0;
+
+              private File voiceFile() {
+                  File[] fs = getFilesDir().listFiles((d, n) -> n.startsWith("alert_voice."));
+                  return fs != null && fs.length > 0 ? fs[0] : null;
+              }
+
+              private void speak(String phrase) {
+                  try {
+                      long now = System.currentTimeMillis();
+                      if (now - lastSpeak < 8000) return;
+                      AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                      if (am == null || am.getRingerMode() != AudioManager.RINGER_MODE_NORMAL) return;
+                      lastSpeak = now;
+                      File vf = voiceFile();
+                      if (vf != null) {
+                          ui.postDelayed(() -> {
+                              try {
+                                  MediaPlayer mp = new MediaPlayer();
+                                  mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+                                  mp.setDataSource(vf.getAbsolutePath());
+                                  mp.setOnCompletionListener(MediaPlayer::release);
+                                  mp.setOnErrorListener((p, a, b) -> { p.release(); return true; });
+                                  mp.prepare();
+                                  mp.start();
+                              } catch (Exception ignored) {}
+                          }, 1300);
+                      } else if (ttsOk && phrase != null && !phrase.isEmpty()) {
+                          ui.postDelayed(() -> {
+                              try {
+                                  android.os.Bundle p = new android.os.Bundle();
+                                  p.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_NOTIFICATION);
+                                  tts.speak(phrase, TextToSpeech.QUEUE_FLUSH, p, "msg" + now);
+                              } catch (Exception ignored) {}
+                          }, 1300);
+                      }
+                  } catch (Exception ignored) {}
+              }
+
+              private void show(String title, String text, String phrase) {
                   Intent li = getPackageManager().getLaunchIntentForPackage(getPackageName());
                   PendingIntent pi = PendingIntent.getActivity(this, 0, li, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
                   Notification n = new NotificationCompat.Builder(this, CH_MSG)
@@ -452,12 +605,16 @@ jobs:
                       .setContentText(text)
                       .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
                       .setPriority(NotificationCompat.PRIORITY_HIGH)
-                      .setDefaults(NotificationCompat.DEFAULT_ALL)
+                      .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                      .setSound(Uri.parse("android.resource://" + getPackageName() + "/raw/fam_chime"))
+                      .setVibrate(new long[]{0, 300, 150, 300, 150, 500})
+                      .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
                       .setAutoCancel(true)
                       .setContentIntent(pi)
                       .build();
                   NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
                   nm.notify(++nid, n);
+                  speak(phrase);
               }
 
               @Override
@@ -465,6 +622,7 @@ jobs:
                   running = false;
                   if (worker != null) worker.interrupt();
                   try { if (wl != null && wl.isHeld()) wl.release(); } catch (Exception ignored) {}
+                  try { if (tts != null) tts.shutdown(); } catch (Exception ignored) {}
                   super.onDestroy();
               }
 
@@ -522,15 +680,246 @@ jobs:
               android:resizeMode="horizontal|vertical"
               android:widgetCategory="home_screen" />
           XML3
-          sed -i 's#<application#<uses-permission android:name="android.permission.READ_SMS" />\n    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <application#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.READ_SMS" />\n    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />\n    <application#' android/app/src/main/AndroidManifest.xml
           sed -i 's#</application>#    <receiver android:name=".HomeWidget" android:exported="true" android:label="دخل و خرج خانه"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/home_widget_info" /></receiver><service android:name=".SyncService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="family chat and shopping list sync" /></service><receiver android:name=".BootReceiver" android:exported="true"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter></receiver>\n    </application>#' android/app/src/main/AndroidManifest.xml
           sed -i '0,/^dependencies {/s//dependencies {\n    implementation "androidx.biometric:biometric:1.1.0"/' android/app/build.gradle
           grep -n 'biometric' android/app/build.gradle || true
+      - name: Notification sound
+        run: |
+          mkdir -p android/app/src/main/res/raw
+          base64 -d > android/app/src/main/res/raw/fam_chime.ogg <<'B64'
+          T2dnUwACAAAAAAAAAAAfL6nYAAAAAC9goa4BHgF2b3JiaXMAAAAAAUSsAAAAAAAAAHcBAAAAAAC4
+          AU9nZ1MAAAAAAAAAAAAAHy+p2AEAAABUptymEED//////////////////8kDdm9yYmlzDQAAAExh
+          dmY2MC4xNi4xMDABAAAAHwAAAGVuY29kZXI9TGF2YzYwLjMxLjEwMiBsaWJ2b3JiaXMBBXZvcmJp
+          cylCQ1YBAAgAAAAxTCDFgNCQVQAAEAAAYCQpDpNmSSmllKEoeZiUSEkppZTFMImYlInFGGOMMcYY
+          Y4wxxhhjjCA0ZBUAAAQAgCgJjqPmSWrOOWcYJ45yoDlpTjinIAeKUeA5CcL1JmNuprSma27OKSUI
+          DVkFAAACAEBIIYUUUkghhRRiiCGGGGKIIYcccsghp5xyCiqooIIKMsggg0wy6aSTTjrpqKOOOuoo
+          tNBCCy200kpMMdVWY669Bl18c84555xzzjnnnHPOCUJDVgEAIAAABEIGGWQQQgghhRRSiCmmmHIK
+          MsiA0JBVAAAgAIAAAAAAR5EUSbEUy7EczdEkT/IsURM10TNFU1RNVVVVVXVdV3Zl13Z113Z9WZiF
+          W7h9WbiFW9iFXfeFYRiGYRiGYRiGYfh93/d93/d9IDRkFQAgAQCgIzmW4ymiIhqi4jmiA4SGrAIA
+          ZAAABAAgCZIiKZKjSaZmaq5pm7Zoq7Zty7Isy7IMhIasAgAAAQAEAAAAAACgaZqmaZqmaZqmaZqm
+          aZqmaZqmaZpmWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWUBoyCoAQAIAQMdx
+          HMdxJEVSJMdyLAcIDVkFAMgAAAgAQFIsxXI0R3M0x3M8x3M8R3REyZRMzfRMDwgNWQUAAAIACAAA
+          AAAAQDEcxXEcydEkT1It03I1V3M913NN13VdV1VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+          VVVVVVWB0JBVAAAEAAAhnWaWaoAIM5BhIDRkFQCAAAAAGKEIQwwIDVkFAAAEAACIoeQgmtCa8805
+          DprloKkUm9PBiVSbJ7mpmJtzzjnnnGzOGeOcc84pypnFoJnQmnPOSQyapaCZ0JpzznkSmwetqdKa
+          c84Z55wOxhlhnHPOadKaB6nZWJtzzlnQmuaouRSbc86JlJsntblUm3POOeecc84555xzzqlenM7B
+          OeGcc86J2ptruQldnHPO+WSc7s0J4ZxzzjnnnHPOOeecc84JQkNWAQBAAAAEYdgYxp2CIH2OBmIU
+          IaYhkx50jw6ToDHIKaQejY5GSqmDUFIZJ6V0gtCQVQAAIAAAhBBSSCGFFFJIIYUUUkghhhhiiCGn
+          nHIKKqikkooqyiizzDLLLLPMMsusw84667DDEEMMMbTSSiw11VZjjbXmnnOuOUhrpbXWWiullFJK
+          KaUgNGQVAAACAEAgZJBBBhmFFFJIIYaYcsopp6CCCggNWQUAAAIACAAAAPAkzxEd0REd0REd0REd
+          0REdz/EcURIlURIl0TItUzM9VVRVV3ZtWZd127eFXdh139d939eNXxeGZVmWZVmWZVmWZVmWZVmW
+          ZQlCQ1YBACAAAABCCCGEFFJIIYWUYowxx5yDTkIJgdCQVQAAIACAAAAAAEdxFMeRHMmRJEuyJE3S
+          LM3yNE/zNNETRVE0TVMVXdEVddMWZVM2XdM1ZdNVZdV2Zdm2ZVu3fVm2fd/3fd/3fd/3fd/3fd/X
+          dSA0ZBUAIAEAoCM5kiIpkiI5juNIkgSEhqwCAGQAAAQAoCiO4jiOI0mSJFmSJnmWZ4maqZme6ami
+          CoSGrAIAAAEABAAAAAAAoGiKp5iKp4iK54iOKImWaYmaqrmibMqu67qu67qu67qu67qu67qu67qu
+          67qu67qu67qu67qu67qu67pAaMgqAEACAEBHciRHciRFUiRFciQHCA1ZBQDIAAAIAMAxHENSJMey
+          LE3zNE/zNNETPdEzPVV0RRcIDVkFAAACAAgAAAAAAMCQDEuxHM3RJFFSLdVSNdVSLVVUPVVVVVVV
+          VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVdU0TdM0gdCQlQAAGQAAI0EGGYQQinKQQm49WAgx
+          5iQFoTkGocQYhKcQMww5DSJ0kEEnPbiSOcMM8+BSKBVETIONJTeOIA3CplxJ5TgIQkNWBABRAACA
+          McgxxBhyzknJoETOMQmdlMg5J6WT0kkpLZYYMyklphJj45yj0knJpJQYS4qdpBJjia0AAIAABwCA
+          AAuh0JAVAUAUAABiDFIKKYWUUs4p5pBSyjHlHFJKOaecU845CB2EyjEGnYMQKaUcU84pxxyEzEHl
+          nIPQQSgAACDAAQAgwEIoNGRFABAnAOBwJM+TNEsUJUsTRc8UZdcTTdeVNM00NVFUVcsTVdVUVdsW
+          TVW2JU0TTU30VFUTRVUVVdOWTVW1bc80ZdlUVd0WVdW2ZdsWfleWdd8zTVkWVdXWTVW1ddeWfV/W
+          bV2YNM00NVFUVU0UVdVUVds2Vde2NVF0VVFVZVlUVVl2ZVn3VVfWfUsUVdVTTdkVVVW2Vdn1bVWW
+          feF0VV1XZdn3VVkWflvXheH2feEYVdXWTdfVdVWWfWHWZWG3dd8oaZppaqKoqpooqqqpqrZtqq6t
+          W6LoqqKqyrJnqq6syrKvq65s65ooqq6oqrIsqqosq7Ks+6os67aoqrqtyrKwm66r67bvC8Ms67pw
+          qq6uq7Ls+6os67qt68Zx67owfKYpy6ar6rqpurpu67pxzLZtHKOq6r4qy8KwyrLv67ovtHUhUVV1
+          3ZRd41dlWfdtX3eeW/eFsm07v637ynHrutL4Oc9vHLm2bRyzbhu/rfvG8ys/YTiOpWeatm2qqq2b
+          qqvrsm4rw6zrQlFVfV2VZd83XVkXbt83jlvXjaKq6roqy76wyrIx3MZvHLswHF3bNo5b152yrQt9
+          Y8j3Cc9r28Zx+zrj9nWjrwwJx48AAIABBwCAABPKQKEhKwKAOAEABiHnFFMQKsUgdBBS6iCkVDEG
+          IXNOSsUclFBKaiGU1CrGIFSOScickxJKaCmU0lIHoaVQSmuhlNZSa7Gm1GLtIKQWSmktlNJaaqnG
+          1FqMEWMQMuekZM5JCaW0FkppLXNOSuegpA5CSqWkFEtKLVbMScmgo9JBSKmkElNJqbVQSmulpBZL
+          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
+          B64
+          ls -la android/app/src/main/res/raw
       - name: Build
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
           J=app/src/main/java/ir/dakhlkharj/app
           cd android && chmod +x gradlew
-          if ./gradlew assembleDebug; then echo 'FULL BUILD OK'; exit 0; fi
+          if ./gradlew assembleDebug; then echo 'FULL BUILD OK'; if [ -n "$KEYSTORE_PASS" ] && [ -f ../release.jks ]; then ./gradlew assembleRelease; fi; exit 0; fi
           echo 'NATIVE FEATURES FAILED - building without them'
           cp ../bak/AndroidManifest.xml app/src/main/AndroidManifest.xml; cp ../bak/build.gradle app/build.gradle; printf 'package ir.dakhlkharj.app;\n\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {}\n' > $J/MainActivity.java
           rm -f $J/HomeNativePlugin.java $J/HomeWidget.java $J/SyncService.java $J/BootReceiver.java app/src/main/res/layout/home_widget.xml app/src/main/res/xml/home_widget_info.xml app/src/main/res/drawable/home_widget_bg.xml
@@ -541,3 +930,9 @@ jobs:
         with:
           name: dakhlkharj-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dakhlkharj-bazaar
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: ignore
